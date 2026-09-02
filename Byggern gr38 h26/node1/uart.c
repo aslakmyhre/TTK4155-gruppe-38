@@ -5,22 +5,22 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-
-
-
+//bit stream input
 static int uart_putchar(char c, FILE *stream) {
-    // Terminals expect CRLF, C only emits LF
     if (c == '\n') {
-        uart_transmit('\r');
+        uart_transmit('\r'); //for new-line support
     }
+
     uart_transmit(c);
     return 0;
 }
 
+//bit stream output
 static int uart_getchar(FILE *stream) {
     return uart_recieve();
 }
 
+//initialize UART
 void uart_init(uint16_t ubrr) {
     //split UBRRHI register
     UBRR0H = (uint8_t)(ubrr >> 8);
@@ -36,12 +36,14 @@ void uart_init(uint16_t ubrr) {
     fdevopen(uart_putchar, uart_getchar);
 }
 
+//transmits
 void uart_transmit(unsigned char data) {
     while (!(UCSR0A & (1 << UDRE0))) {}
     UDR0 = data; 
 }
 
-unsigned char uart_recieve(void) {
+//recieves
+unsigned char uart_receive(void) {
     while (!(UCSR0A & (1 << RXC0))) {}
     return UDR0; 
 }

@@ -6,7 +6,7 @@
 
 
 int main(void) {
-    DDRA |= (1<<PA0); // PA0
+    DDRA |= (1<<PA0);
     uart_init(UBRR_VALUE(9600));
 
     unsigned n = 0;
@@ -14,7 +14,7 @@ int main(void) {
     while (1) {
         PORTA ^= (1<<PA0);
         
-        _delay_ms(500);
-        printf("blink %u\n", n++);
+        _delay_ms(500); //blinking
+        printf("blink %u\n", n++); //counter
     }
 }

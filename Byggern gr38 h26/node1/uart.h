@@ -5,7 +5,7 @@
 
 void uart_init(uint16_t ubrr);
 void uart_transmit(unsigned char data);
-unsigned char uart_recieve(void);
+unsigned char uart_receive(void);
 
 // Baud rate
 #define UBRR_VALUE(BAUD) ((F_CPU / (16UL * (BAUD))) - 1)
