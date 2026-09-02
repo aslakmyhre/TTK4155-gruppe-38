@@ -1,0 +1,23 @@
+{
+  "configurations": [
+    {
+      "name": "AVR ATmega162",
+      "compilerPath": "/usr/bin/avr-gcc",
+      "compilerArgs": [
+        "-mmcu=atmega162"
+      ],
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/usr/lib/avr/include"
+      ],
+      "defines": [
+        "__AVR__",
+        "__AVR_ATmega162__",
+        "F_CPU=4915200UL"
+      ],
+      "cStandard": "c11",
+      "intelliSenseMode": "gcc-x64"
+    }
+  ],
+  "version": 4
+}
