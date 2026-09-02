@@ -1,1 +1,2 @@
-# TTK4147-gruppe-F07
+# TTK4155 gruppe 38
+høst 2026
