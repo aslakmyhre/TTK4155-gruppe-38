@@ -1,23 +1,19 @@
 #define F_CPU 4915200UL
 #include <avr/io.h>
-#include <util/delay.h>
 #include <stdio.h>
 #include "uart.h"
+#include "sram.h"
 
 
 int main(void) {
-    DDRA |= (1<<PA0);
     uart_init(UBRR_VALUE(9600));
 
-    unsigned n = 0;
+    // PORTA/PORTC become the multiplexed address/data bus after this,
+    // so no LED blinking on PA0 any more.
+    sram_init();
+    sram_test();
 
     while (1) {
-        PORTA ^= (1<<PA0);
-
-        _delay_ms(500); //blinking
-
         putchar(getchar()); //mirror input
-
-        //printf("blink %u\n", n++); //counter
     }
 }
