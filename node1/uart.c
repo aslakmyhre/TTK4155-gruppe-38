@@ -17,7 +17,7 @@ static int uart_putchar(char c, FILE *stream) {
 
 //bit stream output
 static int uart_getchar(FILE *stream) {
-    return uart_recieve();
+    return uart_receive();
 }
 
 //initialize UART

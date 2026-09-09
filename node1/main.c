@@ -13,8 +13,11 @@ int main(void) {
 
     while (1) {
         PORTA ^= (1<<PA0);
-        
+
         _delay_ms(500); //blinking
-        printf("blink %u\n", n++); //counter
+
+        putchar(getchar()); //mirror input
+
+        //printf("blink %u\n", n++); //counter
     }
 }

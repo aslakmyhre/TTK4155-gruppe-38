@@ -5,5 +5,8 @@ Starter code for node 1 (ATmega162) in TTK4155 Embedded and Industrial Computer 
 # Requirements
 - avr toolchain
 
+# Picocom
+`picocom -b 9600 /dev/ttyS0`
+
 See Makefile for commands to build, flash, debug etc. 
 
