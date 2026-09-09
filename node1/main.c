@@ -18,7 +18,7 @@ int main(void) {
             volatile uint8_t *ext = (volatile uint8_t *)addr;
 
             *ext = 0x00; //value irrelevant, the latch holds the low address byte A0-A7
-            printf("0x%04X -> A%u\n", addr, pin);
+            
             _delay_ms(LED_ON_MS);
         }
     }
