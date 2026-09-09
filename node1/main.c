@@ -29,6 +29,7 @@ int main(void) {
     while (1) {
         printf("Press any key to run the SRAM test\n");
         getchar();
+        sram_address_test();
         sram_test();
     }
 }

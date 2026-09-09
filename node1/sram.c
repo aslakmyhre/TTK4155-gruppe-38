@@ -12,7 +12,9 @@ void sram_init(void) {
     MCUCSR |= (1 << JTD);
     MCUCSR |= (1 << JTD);
 
-    MCUCR |= (1 << SRE);
+    // SRW10 adds one wait state to the whole external memory space. The
+    // address latch plus SRAM is usually too slow for zero wait states.
+    MCUCR |= (1 << SRE) | (1 << SRW10);
 }
 
 void sram_test(void) {
@@ -56,4 +58,34 @@ void sram_test(void) {
 
     printf("SRAM test completed with \n%4d errors in write phase and \n%4d errors in retrieval phase\n\n",
            write_errors, retrieval_errors);
+}
+
+void sram_address_test(void) {
+    volatile char *ext_ram = (char *) 0x1800;
+    const uint8_t highest_bit = 10; // 0x800 bytes -> A0..A10
+
+    printf("Starting address line test...\n");
+
+    // Each power-of-two address gets a unique marker. If two address lines are
+    // shorted, or one never reaches the SRAM, two markers share a cell and the
+    // earlier one is overwritten.
+    ext_ram[0] = 0xAA;
+    for (uint8_t bit = 0; bit <= highest_bit; bit++) {
+        ext_ram[(uint16_t) 1 << bit] = bit;
+    }
+
+    uint8_t base = ext_ram[0];
+    if (base != 0xAA) {
+        printf("A%d aliases address 0: ext_ram[0] = %02X\n", base, base);
+    }
+
+    for (uint8_t bit = 0; bit <= highest_bit; bit++) {
+        uint8_t value = ext_ram[(uint16_t) 1 << bit];
+        if (value != bit) {
+            printf("A%-2d dead or aliased: ext_ram[%04X] = %02X (should be %02X)\n",
+                   bit, (uint16_t) 1 << bit, value, bit);
+        }
+    }
+
+    printf("Address line test completed\n\n");
 }
