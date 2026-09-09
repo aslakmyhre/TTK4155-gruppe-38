@@ -10,12 +10,13 @@ int main(void) {
     uart_init(UBRR_VALUE(9600));
 
     // Blink PA0 before the bus takes the port over: proof the MCU runs even
-    // if the serial link is dead.
+    // if the serial link is dead. One second per half period, so a clock that
+    // is not the 4.9152 MHz crystal is visible by timing the blink.
     DDRA |= (1 << PA0);
-    for (uint8_t i = 0; i < 10; i++) {
+    for (uint8_t i = 0; i < 20; i++) {
         PORTA ^= (1 << PA0);
         printf("UART up\n");
-        _delay_ms(200);
+        _delay_ms(1000);
     }
 
     // PORTA/PORTC become the multiplexed address/data bus after this,
