@@ -1,5 +1,6 @@
 #define F_CPU 4915200UL
 #include <avr/io.h>
+#include <util/delay.h>
 #include <stdio.h>
 #include "uart.h"
 #include "sram.h"
@@ -7,7 +8,15 @@
 
 int main(void) {
     uart_init(UBRR_VALUE(9600));
-    printf("UART up\n");
+
+    // Blink PA0 before the bus takes the port over: proof the MCU runs even
+    // if the serial link is dead.
+    DDRA |= (1 << PA0);
+    for (uint8_t i = 0; i < 10; i++) {
+        PORTA ^= (1 << PA0);
+        printf("UART up\n");
+        _delay_ms(200);
+    }
 
     // PORTA/PORTC become the multiplexed address/data bus after this,
     // so no LED blinking on PA0 any more.
