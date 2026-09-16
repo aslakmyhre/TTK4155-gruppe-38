@@ -2,9 +2,11 @@
 
 #include <avr/io.h>
 
-// f_clk = F_CPU / (2 * prescaler * (1 + OCR1A)) = 2.4576 MHz, the fastest
-// Timer1 can toggle. MAX156 accepts 0.5-5.0 MHz on CLK.
-#define ADC_CLOCK_OCR 0
+// f_clk = F_CPU / (2 * prescaler * (1 + OCR1A)). ADC_CLOCK_OCR comes from
+// the Makefile so the frequency can be changed without editing code.
+#ifndef ADC_CLOCK_OCR
+#error "ADC_CLOCK_OCR must be defined (see Makefile)"
+#endif
 
 
 void adc_clock_init(void) {

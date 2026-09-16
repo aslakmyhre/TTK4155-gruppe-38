@@ -11,4 +11,8 @@
 // any memory-mapped device.
 void xmem_init(void);
 
+// Reads each decoder boundary address repeatedly so its chip select can be
+// checked on the scope. A key press moves on to the next address.
+void xmem_decode_test(void);
+
 #endif

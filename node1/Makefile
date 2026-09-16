@@ -1,6 +1,12 @@
 # List all source files to be compiled; separate with space
 SOURCE_FILES := main.c uart.c sram.c xmem.c adc.c
 
+# ADC clock on PD5: f = 4.9152 MHz / (2 * (1 + ADC_CLOCK_OCR)). MAX156 needs 0.5-5.0 MHz.
+# Override on the command line, e.g. `make clean flash ADC_CLOCK_OCR=3` or `ADC_CLOCK=no`.
+# Run `make clean` when changing these, objects do not depend on the flags.
+ADC_CLOCK ?= yes
+ADC_CLOCK_OCR ?= 1
+
 # Set this flag to "yes" (no quotes) to use JTAG; otherwise ISP (SPI) is used
 PROGRAM_WITH_JTAG := yes
 
@@ -18,6 +24,11 @@ CC := avr-gcc
 CFLAGS := -O -std=c11 -mmcu=$(TARGET_CPU) -ggdb -Wall -Wextra -DF_CPU=4915200UL
 # Generate .d files so editing a header rebuilds the objects that include it
 DEPFLAGS := -MMD -MP
+
+CFLAGS += -DADC_CLOCK_OCR=$(ADC_CLOCK_OCR)
+ifneq ($(ADC_CLOCK), yes)
+	CFLAGS += -DADC_CLOCK_DISABLED
+endif
 
 OBJECT_FILES = $(SOURCE_FILES:%.c=$(BUILD_DIR)/%.o)
 

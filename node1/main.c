@@ -12,7 +12,13 @@ int main(void) {
     // PORTA/PORTC become the multiplexed address/data bus after this,
     // so no LED blinking on PA0 any more.
     xmem_init();
+#ifdef ADC_CLOCK_DISABLED
+    printf("ADC clock disabled\n");
+#else
     adc_clock_init();
+    printf("ADC clock on, OCR1A=%d\n", ADC_CLOCK_OCR);
+#endif
+    xmem_decode_test();
     sram_test();
 
     while (1) {

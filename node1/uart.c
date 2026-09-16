@@ -48,3 +48,7 @@ unsigned char uart_receive(void) {
     while (!(UCSR0A & (1 << RXC0))) {}
     return UDR0; 
 }
+
+bool uart_has_data(void) {
+    return UCSR0A & (1 << RXC0);
+}
