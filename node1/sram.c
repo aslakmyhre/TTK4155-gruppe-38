@@ -1,23 +1,14 @@
 #include "sram.h"
+#include "xmem.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <avr/io.h>
 
-
-void sram_init(void) {
-    // JTAG owns PC4-PC7
-    // The JTD bit must be written twice within four cycles.
-    MCUCSR |= (1 << JTD);
-    MCUCSR |= (1 << JTD);
-
-    MCUCR |= (1 << SRE);
-}
 
 void sram_test(void) {
-    volatile char *ext_ram = (char *) 0x1400; // Start address for the SRAM
-    uint16_t ext_ram_size = 0xC00;
+    volatile char *ext_ram = (char *) SRAM_BASE;
+    uint16_t ext_ram_size = SRAM_SIZE;
     uint16_t write_errors = 0;
     uint16_t retrieval_errors = 0;
     printf("Starting SRAM test...\n");

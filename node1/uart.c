@@ -4,8 +4,9 @@
 
 #include <avr/io.h>
 
-//bit stream input
+//bit stream output
 static int uart_putchar(char c, FILE *stream) {
+    (void)stream;
     if (c == '\n') {
         uart_transmit('\r'); //for new-line support
     }
@@ -14,8 +15,9 @@ static int uart_putchar(char c, FILE *stream) {
     return 0;
 }
 
-//bit stream output
+//bit stream input
 static int uart_getchar(FILE *stream) {
+    (void)stream;
     return uart_receive();
 }
 

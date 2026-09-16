@@ -1,8 +1,8 @@
-#define F_CPU 4915200UL
 #include <avr/io.h>
 #include <stdio.h>
 #include "uart.h"
 #include "sram.h"
+#include "xmem.h"
 
 
 int main(void) {
@@ -10,7 +10,7 @@ int main(void) {
 
     // PORTA/PORTC become the multiplexed address/data bus after this,
     // so no LED blinking on PA0 any more.
-    sram_init();
+    xmem_init();
     sram_test();
 
     while (1) {
