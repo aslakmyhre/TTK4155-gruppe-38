@@ -3,7 +3,6 @@
 #include <stdio.h>
 
 #include <avr/io.h>
-#include <util/delay.h>
 
 //bit stream input
 static int uart_putchar(char c, FILE *stream) {
