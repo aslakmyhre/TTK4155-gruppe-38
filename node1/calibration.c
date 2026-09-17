@@ -75,6 +75,10 @@ void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     printf("\n--- Touchpad calibration ---\n");
     calibrate_touchpad(cal);
     printf("\nCalibration done\n");
+    for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
+        printf("  ch%u: low=%3u center=%3u high=%3u\n",
+               channel, cal[channel].low, cal[channel].center, cal[channel].high);
+    }
 }
 
 uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw) {

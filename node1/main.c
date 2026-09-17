@@ -35,7 +35,11 @@ int main(void) {
         struct joystick_position pos = joystick_position(
             values[JOYSTICK_X_CHANNEL], values[JOYSTICK_Y_CHANNEL]);
         joystick_print_position(pos);
-        printf("  %s\n", joystick_direction_name(joystick_direction(pos)));
+        // Raw values share this line: tools/plot_adc.py plots any line with
+        // exactly four integers, so a separate raw line would be plotted too.
+        printf("  %-7s  raw: %3u %3u %3u %3u\n",
+               joystick_direction_name(joystick_direction(pos)),
+               raw[0], raw[1], raw[2], raw[3]);
         _delay_ms(200);
     }
 }
