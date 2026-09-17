@@ -177,9 +177,9 @@ def parse_args() -> argparse.Namespace:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--port", help="serial port (autodetected when omitted)")
     parser.add_argument("--baud", type=int, default=9600, help="must match uart_init()")
-    parser.add_argument("--joystick", type=channel_pair, default=(0, 1),
+    parser.add_argument("--joystick", type=channel_pair, default=(2, 3),
                         metavar="X,Y", help="ADC channels driving the joystick panel")
-    parser.add_argument("--touchpad", type=channel_pair, default=(2, 3),
+    parser.add_argument("--touchpad", type=channel_pair, default=(0, 1),
                         metavar="X,Y", help="ADC channels driving the touchpad panel")
     parser.add_argument("--trail", type=int, default=60,
                         help="number of past samples drawn as a trail")

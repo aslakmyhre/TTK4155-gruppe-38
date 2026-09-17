@@ -9,8 +9,8 @@ Two square panels, both scaled 0-255 (the full 8-bit range of the MAX156):
 
 | Panel      | X axis        | Y axis        |
 | ---------- | ------------- | ------------- |
-| `joystick` | ADC channel 0 | ADC channel 1 |
-| `touchpad` | ADC channel 2 | ADC channel 3 |
+| `joystick` | ADC channel 2 | ADC channel 3 |
+| `touchpad` | ADC channel 0 | ADC channel 1 |
 
 Each panel shows the current sample as a red dot, the last 60 samples as a
 trail, a crosshair at the centre (128, 128) to judge the joystick's rest
@@ -52,7 +52,7 @@ From the command line, `--joystick X,Y` and `--touchpad X,Y` take channel
 numbers 0-3:
 
 ```
-./tools/plot_adc.py --joystick 1,0 --touchpad 3,2
+./tools/plot_adc.py --joystick 3,2 --touchpad 1,0
 ```
 
 Or change it while the plot is running, with the plot window focused:
@@ -66,7 +66,7 @@ Or change it while the plot is running, with the plot window focused:
 | `c`   | clear both trails                   |
 
 The panel title always states the mapping in use, e.g.
-`joystick   X=ch0  Y=ch1`. Cycling a channel clears that panel's trail so the
+`joystick   X=ch2  Y=ch3`. Cycling a channel clears that panel's trail so the
 old mapping is not left on screen.
 
 Useful for finding out which channel a stick or touchpad axis is actually wired to:
