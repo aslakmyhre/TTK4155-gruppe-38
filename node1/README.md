@@ -10,3 +10,6 @@ Starter code for node 1 (ATmega162) in TTK4155 Embedded and Industrial Computer 
 
 See Makefile for commands to build, flash, debug etc. 
 
+
+# ADC plotter
+Live plot of the joystick and touchpad positions over UART: see `tools/README.md`.
