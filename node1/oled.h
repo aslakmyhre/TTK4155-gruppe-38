@@ -17,4 +17,9 @@ void oled_draw_image(uint8_t x, uint8_t page, uint8_t width, uint8_t height,
 void oled_draw_image_h(uint8_t x, uint8_t page, uint8_t width, uint8_t height,
                        const uint8_t *img); /* horizontal byte format */
 
+/* Draws image page p (8 pixel rows) of a horizontal-format image on display
+   page page. Only the rows whose bit is set in mask are shown, bit 0 = top. */
+void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
+                            const uint8_t *img, uint8_t p, uint8_t mask);
+
 #endif
