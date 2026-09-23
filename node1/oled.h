@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 // Display pins
-#define DISP_CS  PB0
-#define DISP_DC  PB1
+#define DISP_DC  PB0
+#define DISP_CS  PB1
 #define IO_CS    PB2
 
 
