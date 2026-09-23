@@ -1,12 +1,14 @@
 #include "calibration.h"
 #include "uart.h"
 
+#include <avr/pgmspace.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 
+// Prompts are flash strings (PSTR) to keep them out of the 1 KiB internal RAM.
 static void read_on_enter(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) {
-    printf("%s, then press Enter\n", prompt);
+    printf_P(PSTR("%S, then press Enter\n"), prompt);
     uart_receive(); //any key works
     adc_read(values);
 }
@@ -15,7 +17,7 @@ static uint8_t read_channel_on_enter(const char *prompt, uint8_t channel) {
     //read values when pressed
     uint8_t values[ADC_NUM_CHANNELS];
     read_on_enter(prompt, values);
-    printf("  ch%u = %u\n", channel, values[channel]);
+    printf_P(PSTR("  ch%u = %u\n"), channel, values[channel]);
     return values[channel];
 }
 
@@ -36,45 +38,45 @@ static void calibrate_axis(struct axis_calibration *cal, uint8_t channel, const 
         if (center_between_extremes(cal)) {
             return;
         }
-        printf("ERROR: ch%u low=%u center=%u high=%u, center must lie "
-               "between the extremes. Try again.\n",
-               channel, cal->low, cal->center, cal->high);
+        printf_P(PSTR("ERROR: ch%u low=%u center=%u high=%u, center must lie "
+                    "between the extremes. Try again.\n"),
+                 channel, cal->low, cal->center, cal->high);
     }
 }
 
 static void calibrate_joystick(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     uint8_t rest[ADC_NUM_CHANNELS];
-    read_on_enter("Release the joystick", rest);
+    read_on_enter(PSTR("Release the joystick"), rest);
     cal[JOYSTICK_X_CHANNEL].center = rest[JOYSTICK_X_CHANNEL];
     cal[JOYSTICK_Y_CHANNEL].center = rest[JOYSTICK_Y_CHANNEL];
-    printf("  ch%u = %u, ch%u = %u\n",
-           JOYSTICK_X_CHANNEL, rest[JOYSTICK_X_CHANNEL],
+    printf_P(PSTR("  ch%u = %u, ch%u = %u\n"),
+             JOYSTICK_X_CHANNEL, rest[JOYSTICK_X_CHANNEL],
            JOYSTICK_Y_CHANNEL, rest[JOYSTICK_Y_CHANNEL]);
 
     calibrate_axis(&cal[JOYSTICK_Y_CHANNEL], JOYSTICK_Y_CHANNEL,
-                   "Pull the joystick DOWN", "Push the joystick UP", false);
+                   PSTR("Pull the joystick DOWN"), PSTR("Push the joystick UP"), false);
     calibrate_axis(&cal[JOYSTICK_X_CHANNEL], JOYSTICK_X_CHANNEL,
-                   "Push the joystick LEFT", "Push the joystick RIGHT", false);
+                   PSTR("Push the joystick LEFT"), PSTR("Push the joystick RIGHT"), false);
 }
 
 static void calibrate_touchpad(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     calibrate_axis(&cal[TOUCHPAD_Y_CHANNEL], TOUCHPAD_Y_CHANNEL,
-                   "Hold the touchpad at the BOTTOM", "Hold the touchpad at the TOP",
+                   PSTR("Hold the touchpad at the BOTTOM"), PSTR("Hold the touchpad at the TOP"),
                    true);
     calibrate_axis(&cal[TOUCHPAD_X_CHANNEL], TOUCHPAD_X_CHANNEL,
-                   "Hold the touchpad at the LEFT", "Hold the touchpad at the RIGHT",
+                   PSTR("Hold the touchpad at the LEFT"), PSTR("Hold the touchpad at the RIGHT"),
                    true);
 }
 
 void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
-    printf("\n--- Joystick calibration ---\n");
+    printf_P(PSTR("\n--- Joystick calibration ---\n"));
     calibrate_joystick(cal);
-    printf("\n--- Touchpad calibration ---\n");
+    printf_P(PSTR("\n--- Touchpad calibration ---\n"));
     calibrate_touchpad(cal);
-    printf("\nCalibration done\n");
+    printf_P(PSTR("\nCalibration done\n"));
     for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
-        printf("  ch%u: low=%3u center=%3u high=%3u\n",
-               channel, cal[channel].low, cal[channel].center, cal[channel].high);
+        printf_P(PSTR("  ch%u: low=%3u center=%3u high=%3u\n"),
+                 channel, cal[channel].low, cal[channel].center, cal[channel].high);
     }
 }
 
