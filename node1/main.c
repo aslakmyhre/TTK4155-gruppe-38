@@ -24,6 +24,8 @@ int main(void) {
 
     uint8_t raw[ADC_NUM_CHANNELS];
     uint8_t values[ADC_NUM_CHANNELS];
+
+
     while (1) {
 
         oled_fill(0xFF);          /* all pixels on */
@@ -40,11 +42,14 @@ int main(void) {
         oled_data(0x41); oled_data(0x7F); oled_data(0x41);
         _delay_ms(1000);
 
-        /*
+        
         adc_read(raw);
         for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
             values[channel] = calibration_apply(&cal[channel], raw[channel]);
         }
+
+        input_display_show(values);
+
         // Kept in the format tools/plot_adc.py parses
         printf("ADC: %3u %3u %3u %3u\n",
                values[0], values[1], values[2], values[3]);
