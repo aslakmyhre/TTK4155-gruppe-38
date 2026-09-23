@@ -17,7 +17,7 @@ The default program sends only AVR command `0x03` (joystick read) and prints
 the three raw response bytes as X, Y and button over UART at 9600 baud, 8N1.
 It waits five seconds before the first request so you can observe the OLED
 before polling starts, then reads roughly every half second. It sends no
-OLED commands, LED commands, or other AVR commands. PB1/PB2 (OLED D/C/reset)
+OLED commands, LED commands, or other AVR commands. PB0/PB3 (OLED D/C/reset)
 remain inputs after MCU reset; SPI initialization does not configure them.
 
 This tests whether the board firmware updates the OLED as a side effect of
@@ -27,18 +27,18 @@ a joystick request. That behavior is not guaranteed by the board protocol.
 
 | ATmega162 / supply | IO-board signal | PDF page 3 header label |
 | --- | --- | --- |
-| PB0 | DISP_CS (held inactive/high) | 1 |
-| PB4 / SS | IO_CS | 2 |
+| PB1 | DISP_CS (held inactive/high) | 1 |
+| PB2 | IO_CS | 2 |
 | PB5 / MOSI | MOSI | 3 |
 | PB6 / MISO | MISO | 4 |
 | PB7 / SCK | SCK | 5 |
 | Common GND | GND | 7 |
 | 5 V supply | 5V | 8 |
 
-Disconnect the previous PB1 and PB2 connections to OLED D/C and reset.
+Leave PB0 (OLED D/C) and PB3 (OLED reset) disconnected for this test.
 Ensure DISP_RES is held high using the board's reset-to-5V jumper JP1 or
 the board manual's 5V connection. Do not leave reset floating. Reconnect
-JP1 only after disconnecting PB2. The PDF's header labels are not the
+JP1 only after disconnecting any MCU connection to DISP_RES. The PDF's header labels are not the
 schematic's 1–14 connector pin numbers; use its orientation diagram.
 
 ## Running the experiment
@@ -74,3 +74,8 @@ The original MAX156 ADC application is saved as `examples/adc_demo.c`.
 This joystick experiment is separate from exercise 3.3.4's ADC measurements.
 The original ADC plotter documentation is in `tools/README.md`; this
 experiment's UART output is not in its plotting format.
+
+PB4 is reserved as an output held high: it is the ATmega162 hardware SS
+pin even though IO_CS is on PB2. Do not connect PB4 to a source driving it
+low. A local SPI failure now prints register values and stops instead of
+waiting forever; no response bytes from that failed read are printed.

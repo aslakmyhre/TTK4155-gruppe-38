@@ -16,6 +16,13 @@ int main(void)
 
     while (1) {
         struct io_joystick joy = io_board_joystick();
+        if (spi_failed()) {
+            printf("SPI stopped: SPCR=%02X SPSR=%02X DDRB=%02X PORTB=%02X PINB=%02X\n",
+                   (unsigned int)SPCR, (unsigned int)SPSR,
+                   (unsigned int)DDRB, (unsigned int)PORTB, (unsigned int)PINB);
+            printf("Check SPE/MSTR and hardware SS (PB4). Reset after fixing.\n");
+            while (1) {}
+        }
         printf("Joystick: X=%u Y=%u button=0x%02X\n",
                (unsigned int)joy.x, (unsigned int)joy.y,
                (unsigned int)joy.button);
