@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>
 #include "oled.h"
 
 /* 5x7 font, one byte per column, bit 0 = top pixel. Stored in flash. */
@@ -98,11 +99,18 @@ void oled_clear(void)
 
 void oled_init(void)
 {
+    _delay_ms(100);   /* let the display power up before talking to it */
     spi_init();
-    oled_cmd(0xA1);   /* flip horizontally */
-    oled_cmd(0xC8);   /* flip vertically   */
+
+    oled_cmd(0xAE);   /* display off while configuring          */
+    oled_cmd(0xA1);   /* flip horizontally                      */
+    oled_cmd(0xC8);   /* flip vertically                        */
+    oled_cmd(0x20);   /* memory addressing mode...              */
+    oled_cmd(0x02);   /* ...page mode                           */
+    oled_cmd(0xA4);   /* show RAM content (undoes 0xA5)         */
+    oled_cmd(0xA6);   /* normal, not inverted (undoes 0xA7)     */
     oled_clear();
-    oled_cmd(0xAF);   /* display on        */
+    oled_cmd(0xAF);   /* display on                             */
 }
 
 static const uint8_t *glyph(char c)
