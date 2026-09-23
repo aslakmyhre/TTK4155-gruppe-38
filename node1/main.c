@@ -25,6 +25,21 @@ int main(void) {
     uint8_t raw[ADC_NUM_CHANNELS];
     uint8_t values[ADC_NUM_CHANNELS];
     while (1) {
+
+        oled_fill(0xFF);          /* all pixels on */
+        _delay_ms(1000);
+
+        oled_fill(0x0F);          /* horizontal stripes */
+        _delay_ms(1000);
+
+        oled_clear();             /* "HI" in the middle */
+        oled_goto(3, 58);
+        oled_data(0x7F); oled_data(0x08); oled_data(0x08);
+        oled_data(0x08); oled_data(0x7F);
+        oled_data(0x00);
+        oled_data(0x41); oled_data(0x7F); oled_data(0x41);
+        _delay_ms(1000);
+
         /*
         adc_read(raw);
         for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
