@@ -7,12 +7,12 @@
 
 static void read_on_enter(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) {
     printf("%s, then press Enter\n", prompt);
-    // Any key confirms, so the terminal's line ending does not matter
-    uart_receive();
+    uart_receive(); //any key works
     adc_read(values);
 }
 
 static uint8_t read_channel_on_enter(const char *prompt, uint8_t channel) {
+    //read values when pressed
     uint8_t values[ADC_NUM_CHANNELS];
     read_on_enter(prompt, values);
     printf("  ch%u = %u\n", channel, values[channel]);
@@ -22,14 +22,11 @@ static uint8_t read_channel_on_enter(const char *prompt, uint8_t channel) {
 // calibration_apply() divides by the distance to center on each side, and
 // assumes low and high lie on opposite sides of it.
 static bool center_between_extremes(const struct axis_calibration *cal) {
-    return (cal->low < cal->center && cal->center < cal->high)
-        || (cal->low > cal->center && cal->center > cal->high);
+    return (cal->low < cal->center && cal->center < cal->high) || (cal->low > cal->center && cal->center > cal->high);
 }
 
 // The touchpad has no rest position, so its center is derived from the extremes.
-static void calibrate_axis(struct axis_calibration *cal, uint8_t channel,
-                           const char *low_prompt, const char *high_prompt,
-                           bool center_from_extremes) {
+static void calibrate_axis(struct axis_calibration *cal, uint8_t channel, const char *low_prompt, const char *high_prompt, bool center_from_extremes) {
     while (1) {
         cal->low = read_channel_on_enter(low_prompt, channel);
         cal->high = read_channel_on_enter(high_prompt, channel);
