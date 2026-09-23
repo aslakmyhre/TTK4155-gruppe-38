@@ -176,10 +176,11 @@ int main(void) {
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);
 
+    // Stays on screen while calibration runs over UART
+    play_splash();
     calibration_run(cal);
 
     while (1) {
-        play_splash();
         uint8_t action = menu_run(&main_menu, cal);
         switch (action) {
             case ACTION_INPUT_VIEW: show_inputs(); break;
@@ -190,5 +191,6 @@ int main(void) {
                 printf_P(PSTR("main: menu returned unknown action %u\n"), action);
                 break;
         }
+        play_splash();
     }
 }
