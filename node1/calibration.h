@@ -22,9 +22,9 @@ struct axis_calibration {
     uint8_t high;
 };
 
-// Walks the user through the joystick and touchpad extremes over UART.
-// Blocks until every step is confirmed with Enter.
-// Index = ADC channel number.
+// Walks the user through the joystick and touchpad extremes on the OLED.
+// Blocks until every step is confirmed with a left/right IO-board button.
+// Needs oled_init() and a booted IO board. Index = ADC channel number.
 void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]);
 
 // Scales a raw reading to 0-255, clamping values beyond the calibrated extremes.

@@ -176,7 +176,6 @@ int main(void) {
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);
 
-    // Stays on screen while calibration runs over UART
     play_splash();
     calibration_run(cal);
 
