@@ -25,4 +25,10 @@ void oled_print(const char *s);
 /* For fprintf/fprintf_P. '\n' moves to the start of the next line. */
 FILE *oled_output(void);
 
+/* Draws image page p (8 pixel rows) of a PROGMEM bitmap in horizontal byte
+   format (MSB = leftmost) at column x on display page (0-7). Only the rows
+   whose bit is set in mask are shown, bit 0 = top. */
+void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
+                            const uint8_t *img, uint8_t p, uint8_t mask);
+
 #endif

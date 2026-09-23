@@ -4,6 +4,7 @@
 #include <util/delay.h>
 #include "adc.h"
 #include "calibration.h"
+#include "image.h"
 #include "io_board.h"
 #include "joystick.h"
 #include "menu.h"
@@ -19,6 +20,9 @@
 #define CONTRAST_DIM        0x10
 #define LED_FULL_BRIGHTNESS 255
 #define EXIT_HINT_LINE      7
+#define SPLASH_X            32    /* 64x64 image centered: (128 - 64) / 2 */
+#define SPLASH_STEP_MS      15    /* pause per pixel row, sets the reveal speed */
+#define SPLASH_HOLD_MS      500   /* finished image stays up before the menu */
 
 #define COUNT(array) (sizeof (array) / sizeof (array)[0])
 
@@ -145,6 +149,20 @@ static void led_test(void)
     }
 }
 
+/* Reveals the image one pixel row at a time, from the bottom up. Only the
+   page holding the new row changes, so only that page is redrawn. */
+static void play_splash(void)
+{
+    oled_clear();
+    for (int8_t row = IMAGE_HEIGHT - 1; row >= 0; row--) {
+        uint8_t page = row / 8;
+        uint8_t mask = 0xFF << (row % 8);   /* this row and the ones below it */
+        oled_draw_image_h_page(SPLASH_X, page, IMAGE_WIDTH, image_bitmap, page, mask);
+        _delay_ms(SPLASH_STEP_MS);
+    }
+    _delay_ms(SPLASH_HOLD_MS);
+}
+
 int main(void) {
     uart_init(UBRR_VALUE(9600));
 
@@ -161,6 +179,7 @@ int main(void) {
     calibration_run(cal);
 
     while (1) {
+        play_splash();
         uint8_t action = menu_run(&main_menu, cal);
         switch (action) {
             case ACTION_INPUT_VIEW: show_inputs(); break;

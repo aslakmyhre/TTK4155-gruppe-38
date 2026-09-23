@@ -132,3 +132,28 @@ FILE *oled_output(void)
 {
     return &oled_stream;
 }
+
+/* Horizontal format: each byte is 8 pixels side by side, MSB = leftmost.
+   Collects one bit from each of 8 rows to build one display byte. */
+static uint8_t image_h_byte(const uint8_t *img, uint8_t width,
+                            uint8_t p, uint8_t col)
+{
+    uint8_t bytes_per_row = width / 8;
+    uint8_t out = 0;
+
+    for (uint8_t bit = 0; bit < 8; bit++) {
+        uint8_t row = p * 8 + bit;
+        uint8_t b = pgm_read_byte(&img[row * bytes_per_row + col / 8]);
+        if (b & (0x80 >> (col % 8)))
+            out |= 1 << bit;
+    }
+    return out;
+}
+
+void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
+                            const uint8_t *img, uint8_t p, uint8_t mask)
+{
+    oled_pos(page, x);
+    for (uint8_t col = 0; col < width; col++)
+        oled_data(image_h_byte(img, width, p, col) & mask);
+}
