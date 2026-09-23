@@ -2,7 +2,6 @@
 #include "io_board.h"
 #include "joystick.h"
 #include "oled.h"
-#include "spi.h"
 
 #include <avr/pgmspace.h>
 #include <stdbool.h>
@@ -116,9 +115,6 @@ uint8_t menu_run(const struct menu *root,
     while (1) {
         _delay_ms(MENU_POLL_MS);
         struct menu_input now = read_input(cal);
-        if (spi_failed()) {
-            return MENU_ACTION_SPI_FAILED;
-        }
         enum menu_event event = to_event(now, before);
         before = now;
 

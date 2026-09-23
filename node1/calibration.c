@@ -14,7 +14,6 @@ static void read_on_enter(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) 
 }
 
 static uint8_t read_channel_on_enter(const char *prompt, uint8_t channel) {
-    //read values when pressed
     uint8_t values[ADC_NUM_CHANNELS];
     read_on_enter(prompt, values);
     printf_P(PSTR("  ch%u = %u\n"), channel, values[channel]);

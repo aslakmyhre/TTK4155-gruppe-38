@@ -1,4 +1,3 @@
-#include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -24,7 +23,7 @@
 #define COUNT(array) (sizeof (array) / sizeof (array)[0])
 
 enum action {
-    ACTION_INPUT_VIEW = MENU_ACTION_SPI_FAILED + 1,
+    ACTION_INPUT_VIEW,
     ACTION_LED_TEST,
     ACTION_BRIGHT,
     ACTION_DIM,
@@ -45,18 +44,6 @@ static const struct menu main_menu = { "MAIN MENU", main_items, COUNT(main_items
 
 static struct axis_calibration cal[ADC_NUM_CHANNELS];
 
-
-/* The OLED shares the failed SPI bus, so the error can only go to UART */
-static void halt_on_spi_failure(void)
-{
-    if (!spi_failed())
-        return;
-    printf_P(PSTR("SPI stopped: SPCR=%02X SPSR=%02X DDRB=%02X PORTB=%02X PINB=%02X\n"),
-             (unsigned int)SPCR, (unsigned int)SPSR,
-             (unsigned int)DDRB, (unsigned int)PORTB, (unsigned int)PINB);
-    printf_P(PSTR("Check SPE/MSTR and hardware SS (PB4). Reset after fixing.\n"));
-    while (1) {}
-}
 
 /* True once per press. Start with *was_pressed = true when the screen was
    opened by a click, so the button has to be released first. */
@@ -120,7 +107,6 @@ static void show_inputs(void)
     while (!joystick_clicked(&was_pressed)) {
         print_adc_values();
         draw_io_board_inputs();
-        halt_on_spi_failure();
         _delay_ms(SCREEN_PERIOD_MS);
     }
 }
@@ -155,7 +141,6 @@ static void led_test(void)
         }
         oled_pos(3, 0);
         fprintf_P(out, PSTR("BUTTONS %02X LEDS %02X"), right, leds_on);
-        halt_on_spi_failure();
         _delay_ms(SCREEN_PERIOD_MS);
     }
 }
@@ -177,7 +162,6 @@ int main(void) {
 
     while (1) {
         uint8_t action = menu_run(&main_menu, cal);
-        halt_on_spi_failure();
         switch (action) {
             case ACTION_INPUT_VIEW: show_inputs(); break;
             case ACTION_LED_TEST:   led_test(); break;

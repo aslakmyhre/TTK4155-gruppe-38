@@ -16,6 +16,10 @@ TARGET_DEVICE := m162
 
 CC := avr-gcc
 CFLAGS := -O -std=c11 -mmcu=$(TARGET_CPU) -ggdb -Wall -Wextra -DF_CPU=4915200UL
+# One section per function/variable so the linker can drop unused ones,
+# e.g. the fonts in fonts.h we don't draw with
+CFLAGS += -ffunction-sections -fdata-sections
+LDFLAGS := -Wl,--gc-sections
 # Generate .d files so editing a header rebuilds the objects that include it
 DEPFLAGS := -MMD -MP
 
@@ -30,7 +34,7 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/main.hex: $(OBJECT_FILES) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(OBJECT_FILES) -o $(BUILD_DIR)/a.out
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECT_FILES) -o $(BUILD_DIR)/a.out
 	avr-objcopy -j .text -j .data -O ihex $(BUILD_DIR)/a.out $(BUILD_DIR)/main.hex
 
 .PHONY: flash
