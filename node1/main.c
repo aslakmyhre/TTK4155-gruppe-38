@@ -8,6 +8,7 @@
 #include "sram.h"
 #include "xmem.h"
 #include "oled.h"
+#include "input_display.h"
 
 
 int main(void) {
@@ -62,6 +63,6 @@ int main(void) {
         printf("  %-7s  raw: %3u %3u %3u %3u\n",
                joystick_direction_name(joystick_direction(pos)),
                raw[0], raw[1], raw[2], raw[3]);
-        _delay_ms(200);*/
+        _delay_ms(200);
     }
 }
