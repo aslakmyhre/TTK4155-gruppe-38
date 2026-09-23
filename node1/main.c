@@ -1,10 +1,10 @@
-#include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <util/delay.h>
 #include "adc.h"
 #include "calibration.h"
+#include "image.h"
 #include "io_board.h"
 #include "joystick.h"
 #include "menu.h"
@@ -20,11 +20,14 @@
 #define CONTRAST_DIM        0x10
 #define LED_FULL_BRIGHTNESS 255
 #define EXIT_HINT_LINE      7
+#define SPLASH_X            32    /* 64x64 image centered: (128 - 64) / 2 */
+#define SPLASH_STEP_MS      15    /* pause per pixel row, sets the reveal speed */
+#define SPLASH_HOLD_MS      500   /* finished image stays up before the menu */
 
 #define COUNT(array) (sizeof (array) / sizeof (array)[0])
 
 enum action {
-    ACTION_INPUT_VIEW = MENU_ACTION_SPI_FAILED + 1,
+    ACTION_INPUT_VIEW,
     ACTION_LED_TEST,
     ACTION_BRIGHT,
     ACTION_DIM,
@@ -45,18 +48,6 @@ static const struct menu main_menu = { "MAIN MENU", main_items, COUNT(main_items
 
 static struct axis_calibration cal[ADC_NUM_CHANNELS];
 
-
-/* The OLED shares the failed SPI bus, so the error can only go to UART */
-static void halt_on_spi_failure(void)
-{
-    if (!spi_failed())
-        return;
-    printf_P(PSTR("SPI stopped: SPCR=%02X SPSR=%02X DDRB=%02X PORTB=%02X PINB=%02X\n"),
-             (unsigned int)SPCR, (unsigned int)SPSR,
-             (unsigned int)DDRB, (unsigned int)PORTB, (unsigned int)PINB);
-    printf_P(PSTR("Check SPE/MSTR and hardware SS (PB4). Reset after fixing.\n"));
-    while (1) {}
-}
 
 /* True once per press. Start with *was_pressed = true when the screen was
    opened by a click, so the button has to be released first. */
@@ -120,7 +111,6 @@ static void show_inputs(void)
     while (!joystick_clicked(&was_pressed)) {
         print_adc_values();
         draw_io_board_inputs();
-        halt_on_spi_failure();
         _delay_ms(SCREEN_PERIOD_MS);
     }
 }
@@ -155,9 +145,22 @@ static void led_test(void)
         }
         oled_pos(3, 0);
         fprintf_P(out, PSTR("BUTTONS %02X LEDS %02X"), right, leds_on);
-        halt_on_spi_failure();
         _delay_ms(SCREEN_PERIOD_MS);
     }
+}
+
+/* Reveals the image one pixel row at a time, from the bottom up. Only the
+   page holding the new row changes, so only that page is redrawn. */
+static void play_splash(void)
+{
+    oled_clear();
+    for (int8_t row = IMAGE_HEIGHT - 1; row >= 0; row--) {
+        uint8_t page = row / 8;
+        uint8_t mask = 0xFF << (row % 8);   /* this row and the ones below it */
+        oled_draw_image_h_page(SPLASH_X, page, IMAGE_WIDTH, image_bitmap, page, mask);
+        _delay_ms(SPLASH_STEP_MS);
+    }
+    _delay_ms(SPLASH_HOLD_MS);
 }
 
 int main(void) {
@@ -173,11 +176,11 @@ int main(void) {
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);
 
+    play_splash();
     calibration_run(cal);
 
     while (1) {
         uint8_t action = menu_run(&main_menu, cal);
-        halt_on_spi_failure();
         switch (action) {
             case ACTION_INPUT_VIEW: show_inputs(); break;
             case ACTION_LED_TEST:   led_test(); break;
@@ -187,5 +190,6 @@ int main(void) {
                 printf_P(PSTR("main: menu returned unknown action %u\n"), action);
                 break;
         }
+        play_splash();
     }
 }

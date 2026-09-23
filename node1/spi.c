@@ -1,17 +1,9 @@
 #include "spi.h"
-#include <util/delay.h>
 
 static const uint8_t cs_pins[SPI_SLAVE_COUNT] = {
     [SPI_SLAVE_IO] = SPI_IO_CS,
     [SPI_SLAVE_DISPLAY] = SPI_DISPLAY_CS,
 };
-
-static bool transfer_failed;
-
-bool spi_failed(void)
-{
-    return transfer_failed;
-}
 
 static uint8_t cs_mask(void)
 {
@@ -30,10 +22,6 @@ void spi_deselect_all(void)
 void spi_select(enum spi_slave slave)
 {
     spi_deselect_all();
-    if (slave >= SPI_SLAVE_COUNT) {
-        transfer_failed = true;
-        return;
-    }
     PORTB &= (uint8_t)~_BV(cs_pins[slave]);
 }
 
@@ -46,7 +34,6 @@ void spi_write(const uint8_t *data, uint8_t count)
 
 void spi_init(void)
 {
-    transfer_failed = false;
     spi_deselect_all();
     /* PB4 is the fixed hardware SS pin, even when IO_CS uses PB2.
      * Leaving it as an input can clear MSTR when it goes low. */
@@ -65,25 +52,7 @@ void spi_init(void)
 
 uint8_t spi_transfer(uint8_t value)
 {
-    if (transfer_failed) {
-        return 0;
-    }
-    if ((SPCR & (_BV(SPE) | _BV(MSTR))) != (_BV(SPE) | _BV(MSTR))) {
-        transfer_failed = true;
-        return 0;
-    }
     SPDR = value;
-    /* A byte takes about 208 us at our clock; allow at least 10 ms.
-     * This checks the local SPI peripheral, not a slave acknowledgement. */
-    for (uint16_t remaining = 1000; remaining != 0; --remaining) {
-        if (!(SPCR & _BV(MSTR))) {
-            break;
-        }
-        if (SPSR & _BV(SPIF)) {
-            return SPDR;
-        }
-        _delay_us(10);
-    }
-    transfer_failed = true;
-    return 0;
+    while (!(SPSR & _BV(SPIF))) {}
+    return SPDR;
 }

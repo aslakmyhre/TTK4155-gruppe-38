@@ -5,13 +5,10 @@
 #include "adc.h"
 #include "calibration.h"
 
-// Returned by menu_run() when SPI fails; check spi_failed() for details
-#define MENU_ACTION_SPI_FAILED 0
-
 struct menu;
 
-// A leaf returns its action (not MENU_ACTION_SPI_FAILED) when clicked; an
-// item with a submenu opens it instead.
+// A leaf returns its action when clicked; an item with a submenu opens it
+// instead.
 struct menu_item {
     const char *label;
     const struct menu *submenu;
