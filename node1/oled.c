@@ -2,6 +2,7 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 #include "oled.h"
+#include "spi.h"
 
 /* 5x7 font, one byte per column, bit 0 = top pixel. Stored in flash. */
 static const uint8_t letters[26][5] PROGMEM = {
@@ -49,36 +50,34 @@ static const uint8_t digits[10][5] PROGMEM = {
 static const uint8_t blank[5] PROGMEM = {0};
 
 
-static void spi_init(void)
-{
-    /* MOSI (PB5), SCK (PB7) and CS/DC as outputs.
-       PB4 (SS) must be an output to stay SPI master. */
-    DDRB  |= (1 << PB5) | (1 << PB7) | (1 << PB4)
-           | (1 << DISP_CS) | (1 << DISP_DC) | (1 << IO_CS);
-    PORTB |= (1 << DISP_CS) | (1 << IO_CS);          /* deselect both */
-    SPCR   = (1 << SPE) | (1 << MSTR) | (1 << SPR0); /* master, fosc/16 */
-}
-
-static void spi_transfer(uint8_t b)
-{
-    SPDR = b;
-    while (!(SPSR & (1 << SPIF)));
-}
-
 static void oled_cmd(uint8_t c)
 {
-    PORTB &= ~(1 << DISP_DC);   /* command mode */
-    PORTB &= ~(1 << DISP_CS);
-    spi_transfer(c);
-    PORTB |=  (1 << DISP_CS);
+    spi_deselect_all();
+    PORTB &= ~(1 << SPI_DISPLAY_DC);   /* command mode */
+    PORTB &= ~(1 << SPI_DISPLAY_CS);
+    (void)spi_transfer(c);
+    PORTB |=  (1 << SPI_DISPLAY_CS);
 }
 
 static void oled_data(uint8_t d)
 {
-    PORTB |=  (1 << DISP_DC);   /* data mode */
-    PORTB &= ~(1 << DISP_CS);
-    spi_transfer(d);
-    PORTB |=  (1 << DISP_CS);
+    spi_deselect_all();
+    PORTB |=  (1 << SPI_DISPLAY_DC);   /* data mode */
+    PORTB &= ~(1 << SPI_DISPLAY_CS);
+    (void)spi_transfer(d);
+    PORTB |=  (1 << SPI_DISPLAY_CS);
+}
+
+static void oled_reset(void)
+{
+    PORTB |= (1 << SPI_DISPLAY_RESET);
+    PORTB &= ~(1 << SPI_DISPLAY_DC);
+    DDRB  |= (1 << SPI_DISPLAY_RESET) | (1 << SPI_DISPLAY_DC);
+    /* DISP_RES must connect ONLY to PB3, not also be tied to 5V by JP1 */
+    PORTB &= ~(1 << SPI_DISPLAY_RESET);
+    _delay_ms(1);
+    PORTB |=  (1 << SPI_DISPLAY_RESET);
+    _delay_ms(100);   /* let the display power up before talking to it */
 }
 
 void oled_goto(uint8_t page, uint8_t col)
@@ -99,8 +98,7 @@ void oled_clear(void)
 
 void oled_init(void)
 {
-    _delay_ms(100);   /* let the display power up before talking to it */
-    spi_init();
+    oled_reset();
 
     oled_cmd(0xAE);   /* display off while configuring          */
     oled_cmd(0xA1);   /* flip horizontally                      */
