@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 /* Pins on PORTB - change to match your wiring */
-#define DISP_CS  PB4
-#define DISP_DC  PB2
-#define IO_CS    PB3
+#define DISP_CS  PB0
+#define DISP_DC  PB1
+#define IO_CS    PB2
 
 void oled_init(void);
 void oled_cmd(uint8_t c);

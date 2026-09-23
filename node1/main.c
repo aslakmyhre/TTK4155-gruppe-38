@@ -7,6 +7,7 @@
 #include "uart.h"
 #include "sram.h"
 #include "xmem.h"
+#include "oled.h"
 
 
 int main(void) {
@@ -17,13 +18,14 @@ int main(void) {
     xmem_init();
     adc_init();
     sram_test();
-
+    oled_init();
     struct axis_calibration cal[ADC_NUM_CHANNELS];
     calibration_run(cal);
 
     uint8_t raw[ADC_NUM_CHANNELS];
     uint8_t values[ADC_NUM_CHANNELS];
     while (1) {
+        /*
         adc_read(raw);
         for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
             values[channel] = calibration_apply(&cal[channel], raw[channel]);
@@ -40,6 +42,6 @@ int main(void) {
         printf("  %-7s  raw: %3u %3u %3u %3u\n",
                joystick_direction_name(joystick_direction(pos)),
                raw[0], raw[1], raw[2], raw[3]);
-        _delay_ms(200);
+        _delay_ms(200);*/
     }
 }
