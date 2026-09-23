@@ -1,5 +1,7 @@
 # ADC plotter
 
+written by Claude Code
+
 `plot_adc.py` reads the ADC lines node 1 prints on the UART and draws the
 **live** position of the joystick and the touchpad while you move them.
 It is not a log viewer: every frame comes from the serial port as the board

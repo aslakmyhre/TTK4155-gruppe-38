@@ -6,9 +6,7 @@
 
 #define PERCENT_MAX 100
 
-
-// The origo splits 0-255 unevenly (128 below, 127 above), so each side is
-// scaled on its own to reach exactly -100 and 100.
+// value to percent, accounting for uneven split (128 below origo, 127 above)
 static int8_t to_percent(uint8_t value) {
     int16_t offset = (int16_t) value - CALIBRATION_ORIGO;
     int16_t span = offset < 0 ? CALIBRATION_ORIGO : CALIBRATION_MAX - CALIBRATION_ORIGO;

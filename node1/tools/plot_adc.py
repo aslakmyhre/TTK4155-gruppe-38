@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Live 2D plot of the node1 ADC channels streamed over UART.
+""" (AI generated visualizer)
+Live 2D plot of the node1 ADC channels streamed over UART.
 
 The firmware prints one line per conversion holding all four channels:
 
