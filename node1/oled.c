@@ -135,3 +135,37 @@ void oled_print(const char *s)
     while (*s)
         oled_putchar(*s++);
 }
+
+/* Vertical format: each byte is 8 stacked pixels, bit 0 = top.
+   This is what the display expects, so bytes are sent as they are. */
+void oled_draw_image(uint8_t x, uint8_t page, uint8_t width, uint8_t height,
+                     const uint8_t *img)
+{
+    for (uint8_t p = 0; p < height / 8; p++) {
+        oled_goto(page + p, x);
+        for (uint8_t col = 0; col < width; col++)
+            oled_data(pgm_read_byte(&img[p * width + col]));
+    }
+}
+
+/* Horizontal format: each byte is 8 pixels side by side, MSB = leftmost.
+   Collects one bit from each of 8 rows to build every display byte. */
+void oled_draw_image_h(uint8_t x, uint8_t page, uint8_t width, uint8_t height,
+                       const uint8_t *img)
+{
+    uint8_t bytes_per_row = width / 8;
+
+    for (uint8_t p = 0; p < height / 8; p++) {
+        oled_goto(page + p, x);
+        for (uint8_t col = 0; col < width; col++) {
+            uint8_t out = 0;
+            for (uint8_t bit = 0; bit < 8; bit++) {
+                uint8_t row = p * 8 + bit;
+                uint8_t b = pgm_read_byte(&img[row * bytes_per_row + col / 8]);
+                if (b & (0x80 >> (col % 8)))
+                    out |= 1 << bit;
+            }
+            oled_data(out);           /* use ~out to invert the colors */
+        }
+    }
+}

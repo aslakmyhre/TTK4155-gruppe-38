@@ -10,4 +10,11 @@ void oled_goto(uint8_t page, uint8_t col);   /* page 0-7, col 0-127 */
 void oled_putchar(char c);                   /* A-Z, 0-9 and space  */
 void oled_print(const char *s);
 
+/* Draw a PROGMEM bitmap at column x, starting on page (0-7).
+   width in pixels, height a multiple of 8. */
+void oled_draw_image(uint8_t x, uint8_t page, uint8_t width, uint8_t height,
+                     const uint8_t *img);   /* vertical byte format   */
+void oled_draw_image_h(uint8_t x, uint8_t page, uint8_t width, uint8_t height,
+                       const uint8_t *img); /* horizontal byte format */
+
 #endif
