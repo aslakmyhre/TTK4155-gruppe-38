@@ -4,8 +4,7 @@
 
 static void begin(uint8_t command)
 {
-    spi_deselect_all();
-    PORTB &= (uint8_t)~_BV(SPI_IO_CS);
+    spi_select(SPI_SLAVE_IO);
     (void)spi_transfer(command);
     _delay_us(40);
 }
@@ -27,9 +26,9 @@ static void write_led(uint8_t command, uint8_t led, uint8_t value)
     if (led >= IO_BOARD_LED_COUNT) {
         return;
     }
+    const uint8_t data[] = {led, value};
     begin(command);
-    (void)spi_transfer(led);
-    (void)spi_transfer(value);
+    spi_write(data, sizeof data);
     spi_deselect_all();
 }
 
