@@ -29,6 +29,7 @@ void joystick_print_position(struct joystick_position pos);
 // The axis with the larger deflection decides the direction.
 enum joystick_direction joystick_direction(struct joystick_position pos);
 
+// Returns a string in flash: print it with printf_P and %S.
 const char *joystick_direction_name(enum joystick_direction direction);
 
 #endif

@@ -1,6 +1,7 @@
 #include "joystick.h"
 #include "calibration.h"
 
+#include <avr/pgmspace.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,7 +22,7 @@ struct joystick_position joystick_position(uint8_t x, uint8_t y) {
 }
 
 void joystick_print_position(struct joystick_position pos) {
-    printf("X:%4d%%  Y:%4d%%", pos.x, pos.y);
+    printf_P(PSTR("X:%4d%%  Y:%4d%%"), pos.x, pos.y);
 }
 
 enum joystick_direction joystick_direction(struct joystick_position pos) {
@@ -39,11 +40,11 @@ enum joystick_direction joystick_direction(struct joystick_position pos) {
 
 const char *joystick_direction_name(enum joystick_direction direction) {
     switch (direction) {
-        case JOYSTICK_NEUTRAL: return "NEUTRAL";
-        case JOYSTICK_LEFT:    return "LEFT";
-        case JOYSTICK_RIGHT:   return "RIGHT";
-        case JOYSTICK_UP:      return "UP";
-        case JOYSTICK_DOWN:    return "DOWN";
+        case JOYSTICK_NEUTRAL: return PSTR("NEUTRAL");
+        case JOYSTICK_LEFT:    return PSTR("LEFT");
+        case JOYSTICK_RIGHT:   return PSTR("RIGHT");
+        case JOYSTICK_UP:      return PSTR("UP");
+        case JOYSTICK_DOWN:    return PSTR("DOWN");
     }
-    return "INVALID";
+    return PSTR("INVALID");
 }
