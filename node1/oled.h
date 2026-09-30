@@ -30,4 +30,8 @@ FILE *oled_output(void);
 void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
                             const uint8_t *img, uint8_t p, uint8_t mask);
 
+/* Writes width columns from RAM at column x on display page (0-7). Each byte
+   is one column of 8 pixels, bit 0 = top. */
+void oled_draw_columns(uint8_t x, uint8_t page, const uint8_t *columns, uint8_t width);
+
 #endif

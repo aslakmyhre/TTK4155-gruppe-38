@@ -148,3 +148,10 @@ void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
     for (uint8_t col = 0; col < width; col++)
         oled_data(image_h_byte(img, width, p, col) & mask);
 }
+
+void oled_draw_columns(uint8_t x, uint8_t page, const uint8_t *columns, uint8_t width)
+{
+    oled_pos(page, x);
+    for (uint8_t col = 0; col < width; col++)
+        oled_data(columns[col]);
+}

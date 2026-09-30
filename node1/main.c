@@ -9,6 +9,7 @@
 #include "image.h"
 #include "io_board.h"
 #include "joystick.h"
+#include "joystick_box.h"
 #include "menu.h"
 #include "oled.h"
 #include "spi.h"
@@ -25,12 +26,21 @@
 #define SPLASH_X            32    /* 64x64 image centered: (128 - 64) / 2 */
 #define SPLASH_STEP_MS      15    /* pause per pixel row, sets the reveal speed */
 #define SPLASH_HOLD_MS      500   /* finished image stays up before the menu */
+#define CAN_TEST_PERIOD_MS  50
+#define CAN_TEST_ID         0x010 /* joystick position: x, y in percent */
+#define CAN_TEST_LENGTH     2
+#define CAN_TEST_COUNT_LINE 6
+#define SENT_BOX_X          12    /* 40 px boxes centered in each half */
+#define RECEIVED_BOX_X      76
+#define SENT_LABEL_X        8
+#define RECEIVED_LABEL_X    78
 
 #define COUNT(array) (sizeof (array) / sizeof (array)[0])
 
 enum action {
     ACTION_INPUT_VIEW,
     ACTION_LED_TEST,
+    ACTION_CAN_TEST,
     ACTION_BRIGHT,
     ACTION_DIM,
 };
@@ -44,6 +54,7 @@ static const struct menu settings_menu = { "SETTINGS", settings_items, COUNT(set
 static const struct menu_item main_items[] = {
     { "INPUT VIEW", NULL,           ACTION_INPUT_VIEW },
     { "LED TEST",   NULL,           ACTION_LED_TEST },
+    { "CAN TEST",   NULL,           ACTION_CAN_TEST },
     { "SETTINGS",   &settings_menu, 0 },
 };
 static const struct menu main_menu = { "MAIN MENU", main_items, COUNT(main_items) };
@@ -151,6 +162,65 @@ static void led_test(void)
     }
 }
 
+static struct joystick_position read_joystick(void)
+{
+    uint8_t raw[ADC_NUM_CHANNELS];
+    adc_read(raw);
+    return joystick_position(
+        calibration_apply(&cal[JOYSTICK_X_CHANNEL], raw[JOYSTICK_X_CHANNEL]),
+        calibration_apply(&cal[JOYSTICK_Y_CHANNEL], raw[JOYSTICK_Y_CHANNEL]));
+}
+
+/* Lab task 5: the calibrated joystick position is sent over CAN in loopback
+   mode. Left box: what was sent. Right box: what came back from the MCP2515. */
+static void can_test(void)
+{
+    FILE *out = oled_output();
+    struct joystick_box sent_box;
+    struct joystick_box received_box;
+    uint16_t sent = 0;
+    uint16_t received = 0;
+    bool was_pressed = true;
+
+    oled_clear();
+    oled_pos(0, SENT_LABEL_X);
+    oled_print("JOYSTICK");
+    oled_pos(0, RECEIVED_LABEL_X);
+    oled_print("CAN RX");
+    joystick_box_init(&sent_box, SENT_BOX_X);
+    joystick_box_init(&received_box, RECEIVED_BOX_X);
+    oled_pos(EXIT_HINT_LINE, 0);
+    oled_print("CLICK TO EXIT");
+
+    while (!joystick_clicked(&was_pressed)) {
+        struct joystick_position pos = read_joystick();
+        struct can_message message = {
+            .id = CAN_TEST_ID,
+            .length = CAN_TEST_LENGTH,
+            .data = { (uint8_t)pos.x, (uint8_t)pos.y },
+        };
+        if (can_send(&message))
+            sent++;
+        joystick_box_show(&sent_box, pos);
+
+        // Only this screen sends in loopback, so every frame should be ours
+        while (can_receive(&message)) {
+            if (message.id != CAN_TEST_ID || message.length != CAN_TEST_LENGTH) {
+                printf_P(PSTR("can test: unexpected id %03X length %u\n"),
+                         message.id, message.length);
+                continue;
+            }
+            received++;
+            struct joystick_position echo = { (int8_t)message.data[0], (int8_t)message.data[1] };
+            joystick_box_show(&received_box, echo);
+        }
+
+        oled_pos(CAN_TEST_COUNT_LINE, 0);
+        fprintf_P(out, PSTR("TX %5u   RX %5u"), sent, received);
+        _delay_ms(CAN_TEST_PERIOD_MS);
+    }
+}
+
 /* Reveals the image one pixel row at a time, from the bottom up. Only the
    page holding the new row changes, so only that page is redrawn. */
 static void play_splash(void)
@@ -190,6 +260,7 @@ int main(void) {
         switch (action) {
             case ACTION_INPUT_VIEW: show_inputs(); break;
             case ACTION_LED_TEST:   led_test(); break;
+            case ACTION_CAN_TEST:   can_test(); break;
             case ACTION_BRIGHT:     oled_contrast(CONTRAST_BRIGHT); break;
             case ACTION_DIM:        oled_contrast(CONTRAST_DIM); break;
             default:
