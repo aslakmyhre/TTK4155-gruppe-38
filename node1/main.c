@@ -9,6 +9,7 @@
 #include "io_board.h"
 #include "joystick.h"
 #include "mcp2515.h"
+#include "mcp2515_test.h"
 #include "menu.h"
 #include "oled.h"
 #include "spi.h"
@@ -31,6 +32,7 @@
 enum action {
     ACTION_INPUT_VIEW,
     ACTION_LED_TEST,
+    ACTION_CAN_TEST,
     ACTION_BRIGHT,
     ACTION_DIM,
 };
@@ -44,6 +46,7 @@ static const struct menu settings_menu = { "SETTINGS", settings_items, COUNT(set
 static const struct menu_item main_items[] = {
     { "INPUT VIEW", NULL,           ACTION_INPUT_VIEW },
     { "LED TEST",   NULL,           ACTION_LED_TEST },
+    { "CAN TEST",   NULL,           ACTION_CAN_TEST },
     { "SETTINGS",   &settings_menu, 0 },
 };
 static const struct menu main_menu = { "MAIN MENU", main_items, COUNT(main_items) };
@@ -151,6 +154,18 @@ static void led_test(void)
     }
 }
 
+/* MCP2515 results stay on screen until the joystick is clicked */
+static void can_test(void)
+{
+    bool was_pressed = true;
+    mcp2515_test();
+    oled_pos(EXIT_HINT_LINE, 0);
+    oled_print("CLICK TO EXIT");
+    while (!joystick_clicked(&was_pressed)) {
+        _delay_ms(SCREEN_PERIOD_MS);
+    }
+}
+
 /* Reveals the image one pixel row at a time, from the bottom up. Only the
    page holding the new row changes, so only that page is redrawn. */
 static void play_splash(void)
@@ -191,6 +206,7 @@ int main(void) {
         switch (action) {
             case ACTION_INPUT_VIEW: show_inputs(); break;
             case ACTION_LED_TEST:   led_test(); break;
+            case ACTION_CAN_TEST:   can_test(); break;
             case ACTION_BRIGHT:     oled_contrast(CONTRAST_BRIGHT); break;
             case ACTION_DIM:        oled_contrast(CONTRAST_DIM); break;
             default:

@@ -9,10 +9,16 @@
 #define MCP2515_INT_PIN PD2
 
 /* Register addresses, datasheet section 11 */
-#define MCP2515_CANSTAT 0x0E
-#define MCP2515_CANCTRL 0x0F
-#define MCP2515_CANINTE 0x2B
-#define MCP2515_CANINTF 0x2C
+#define MCP2515_CANSTAT  0x0E
+#define MCP2515_CANCTRL  0x0F
+#define MCP2515_CANINTE  0x2B
+#define MCP2515_CANINTF  0x2C
+#define MCP2515_CNF1     0x2A
+#define MCP2515_TXB0SIDH 0x31   /* then SIDL, EID8, EID0, DLC, D0-D7 */
+#define MCP2515_RXB0D0   0x66
+
+/* Same bit position in CANINTE (enable) and CANINTF (flag) */
+#define MCP2515_INT_RX0 0x01
 
 /* OPMOD in CANSTAT and REQOP in CANCTRL share bits 7-5 */
 #define MCP2515_MODE_MASK     0xE0
