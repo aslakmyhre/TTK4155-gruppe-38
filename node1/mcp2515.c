@@ -11,6 +11,30 @@
 #define INSTRUCTION_RTS         0x80
 #define INSTRUCTION_READ_STATUS 0xA0
 #define INSTRUCTION_BIT_MODIFY  0x05
+/* Fast buffer access, both starting at the buffer's SIDH register */
+#define INSTRUCTION_READ_RX_BUFFER 0x90   /* | buffer << 2 selects RXB0/RXB1 */
+#define INSTRUCTION_LOAD_TX_BUFFER 0x40   /* TXB0 */
+#define READ_RX_BUFFER_SHIFT       2
+
+#define RXB0CTRL 0x60
+#define RXB1CTRL 0x70
+#define RXBCTRL_RXM_ANY 0x60   /* filters and masks off: any frame is received */
+#define RXBCTRL_BUKT    0x04   /* RXB0 rolls over into RXB1 when full */
+
+/* Buffer layout from SIDH, same in TX and RX buffers (datasheet 3.0/4.0) */
+#define FRAME_HEADER_LENGTH 5   /* SIDH, SIDL, EID8, EID0, DLC */
+#define HEADER_SIDH 0
+#define HEADER_SIDL 1
+#define HEADER_DLC  4
+#define SIDH_SHIFT  3           /* SIDH holds ID bits 10-3 */
+#define SIDL_SHIFT  5           /* SIDL bits 7-5 hold ID bits 2-0 */
+#define SIDL_ID_MASK 0x07
+#define SIDL_SRR    0x10        /* RX: standard remote frame */
+#define SIDL_IDE    0x08        /* RX: extended frame */
+#define DLC_MASK    0x0F
+
+/* A mode switch waits for pending transmissions to finish (datasheet 10.0) */
+#define MODE_SWITCH_TIMEOUT_MS 10
 
 #define TXB_ALL (MCP2515_TXB0 | MCP2515_TXB1 | MCP2515_TXB2)
 
@@ -107,11 +131,92 @@ void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data)
     spi_deselect_all();
 }
 
+/* Filters are left unset by reset, so they are turned off rather than trusted */
+static void receive_init(void)
+{
+    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT);
+    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY);
+    mcp2515_write(MCP2515_CANINTE, MCP2515_INT_RX0 | MCP2515_INT_RX1);
+}
+
 bool mcp2515_init(void)
 {
     mcp2515_reset();
     int0_init();
-    return (mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) == MCP2515_MODE_CONFIG;
+    if ((mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) != MCP2515_MODE_CONFIG) {
+        return false;
+    }
+    receive_init();
+    return true;
+}
+
+bool mcp2515_set_mode(uint8_t mode)
+{
+    mcp2515_bit_modify(MCP2515_CANCTRL, MCP2515_MODE_MASK, mode);
+    for (uint8_t ms = 0; ms < MODE_SWITCH_TIMEOUT_MS; ms++) {
+        if ((mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) == mode) {
+            return true;
+        }
+        _delay_ms(1);
+    }
+    return false;
+}
+
+bool mcp2515_transmit(uint16_t id, const uint8_t *data, uint8_t length)
+{
+    if (mcp2515_read_status() & MCP2515_STATUS_TX0REQ) {
+        return false;
+    }
+    const uint8_t header[FRAME_HEADER_LENGTH] = {
+        [HEADER_SIDH] = (uint8_t)(id >> SIDH_SHIFT),
+        [HEADER_SIDL] = (uint8_t)((id & SIDL_ID_MASK) << SIDL_SHIFT),
+        [HEADER_DLC]  = length,
+    };
+    begin(INSTRUCTION_LOAD_TX_BUFFER);
+    spi_write(header, sizeof header);
+    spi_write(data, length);
+    spi_deselect_all();
+    return mcp2515_request_to_send(MCP2515_TXB0);
+}
+
+/* Raising CS at the end of READ RX BUFFER clears the buffer's RXnIF */
+static bool read_rx_buffer(uint8_t buffer, uint16_t *id, uint8_t *data, uint8_t *length)
+{
+    uint8_t header[FRAME_HEADER_LENGTH];
+    begin(INSTRUCTION_READ_RX_BUFFER | (uint8_t)(buffer << READ_RX_BUFFER_SHIFT));
+    for (uint8_t i = 0; i < FRAME_HEADER_LENGTH; ++i) {
+        header[i] = spi_transfer(0x00);
+    }
+    if (header[HEADER_SIDL] & (SIDL_IDE | SIDL_SRR)) {
+        spi_deselect_all();
+        return false;
+    }
+    uint8_t dlc = header[HEADER_DLC] & DLC_MASK;
+    /* CAN 2.0B: a DLC of 9-15 still carries 8 data bytes */
+    *length = dlc > MCP2515_MAX_DATA_LENGTH ? MCP2515_MAX_DATA_LENGTH : dlc;
+    for (uint8_t i = 0; i < *length; ++i) {
+        data[i] = spi_transfer(0x00);
+    }
+    spi_deselect_all();
+    *id = (uint16_t)((uint16_t)header[HEADER_SIDH] << SIDH_SHIFT
+                     | header[HEADER_SIDL] >> SIDL_SHIFT);
+    return true;
+}
+
+bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length)
+{
+    /* The INT pin says whether anything arrived without an SPI transfer */
+    if (!mcp2515_interrupt_pending()) {
+        return false;
+    }
+    uint8_t status = mcp2515_read_status();
+    if (status & MCP2515_STATUS_RX0IF) {
+        return read_rx_buffer(0, id, data, length);
+    }
+    if (status & MCP2515_STATUS_RX1IF) {
+        return read_rx_buffer(1, id, data, length);
+    }
+    return false;
 }
 
 bool mcp2515_interrupt_pending(void)

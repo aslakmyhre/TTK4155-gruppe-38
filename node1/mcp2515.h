@@ -14,6 +14,12 @@
 #define MCP2515_CANINTE 0x2B
 #define MCP2515_CANINTF 0x2C
 
+/* Same bit positions in CANINTE (enable) and CANINTF (flag) */
+#define MCP2515_INT_RX0 0x01
+#define MCP2515_INT_RX1 0x02
+
+#define MCP2515_MAX_DATA_LENGTH 8
+
 /* OPMOD in CANSTAT and REQOP in CANCTRL share bits 7-5 */
 #define MCP2515_MODE_MASK     0xE0
 #define MCP2515_MODE_NORMAL   0x00
@@ -47,13 +53,24 @@ uint8_t mcp2515_read_status(void);
 /* Only for registers shaded in the register map; others take a full write */
 void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data);
 
-/* Resets the controller and enables INT0 on the falling edge of INT; global
-   interrupts (sei) are left to the caller. False if the controller is not in
-   configuration mode after reset, which usually means wiring, clock or CS is
-   wrong. INT only fires for events enabled in CANINTE, all off after reset. */
+/* Resets the controller, enables INT0 on the falling edge of INT and sets up
+   reception: filters off, RXB0 overflows into RXB1, INT fires on a received
+   frame. Global interrupts (sei) are left to the caller. False if the
+   controller is not in configuration mode after reset, which usually means
+   wiring, clock or CS is wrong. Stays in configuration mode. */
 bool mcp2515_init(void);
 /* True while an enabled CANINTF flag is set. Clear the flags with bit modify,
    then call again until false. */
 bool mcp2515_interrupt_pending(void);
+/* mode is one of MCP2515_MODE_*. False if the controller did not switch. */
+bool mcp2515_set_mode(uint8_t mode);
+
+/* Standard data frames through TXB0. The caller keeps id within 11 bits and
+   length within MCP2515_MAX_DATA_LENGTH. False while TXB0 is still sending. */
+bool mcp2515_transmit(uint16_t id, const uint8_t *data, uint8_t length);
+/* data must hold MCP2515_MAX_DATA_LENGTH bytes. False if no frame is waiting.
+   Extended and remote frames are not supported: they are dropped, and false
+   is returned for them too. */
+bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length);
 
 #endif
