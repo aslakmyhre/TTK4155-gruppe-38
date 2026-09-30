@@ -6,6 +6,16 @@
 
 #define IO_BOARD_LED_COUNT 6
 
+#define IO_BOARD_TOUCH_PAD      0x01
+#define IO_BOARD_TOUCH_SLIDER   0x02
+#define IO_BOARD_JOYSTICK       0x03
+#define IO_BOARD_BUTTONS        0x04
+#define IO_BOARD_LED_ON_OFF     0x05
+#define IO_BOARD_LED_PWM        0x06
+#define IO_BOARD_INFO           0x07
+
+
+
 struct io_touchpad { uint8_t x, y, size; };
 struct io_slider { uint8_t x, size; };
 struct io_joystick { uint8_t x, y, button; };

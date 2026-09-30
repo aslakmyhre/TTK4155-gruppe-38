@@ -9,7 +9,6 @@
 
 // 128x64 SSD1309 on the IO-board. Pins are in spi.h; call spi_init() first.
 void oled_init(void);
-void oled_reset(void);
 void oled_clear(void);
 void oled_clear_line(uint8_t line);          /* leaves the cursor at its start */
 void oled_home(void);
@@ -30,5 +29,9 @@ FILE *oled_output(void);
    whose bit is set in mask are shown, bit 0 = top. */
 void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
                             const uint8_t *img, uint8_t p, uint8_t mask);
+
+/* Writes width columns from RAM at column x on display page (0-7). Each byte
+   is one column of 8 pixels, bit 0 = top. */
+void oled_draw_columns(uint8_t x, uint8_t page, const uint8_t *columns, uint8_t width);
 
 #endif
