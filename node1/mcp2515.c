@@ -4,63 +4,55 @@
 #include "mcp2515.h"
 #include "spi.h"
 
-/* Datasheet table 12-1 */
-#define INSTRUCTION_RESET       0xC0
-#define INSTRUCTION_READ        0x03
-#define INSTRUCTION_WRITE       0x02
-#define INSTRUCTION_RTS         0x80
-#define INSTRUCTION_READ_STATUS 0xA0
-#define INSTRUCTION_BIT_MODIFY  0x05
-/* Fast buffer access, both starting at the buffer's SIDH register */
-#define INSTRUCTION_READ_RX_BUFFER 0x90   /* | buffer << 2 selects RXB0/RXB1 */
-#define INSTRUCTION_LOAD_TX_BUFFER 0x40   /* TXB0 */
+//table 12-1
+#define INSTRUCTION_RESET       0xC0 //1100 0000
+#define INSTRUCTION_READ        0x03 //0000 0011
+#define INSTRUCTION_WRITE       0x02 //0000 0010
+#define INSTRUCTION_RTS         0x80 //1000 0nnn (nnn decides buffer, see datasheet)
+#define INSTRUCTION_READ_STATUS 0xA0 //1010 0000
+#define INSTRUCTION_BIT_MODIFY  0x05 //0000 0101
+#define INSTRUCTION_READ_RX_BUFFER 0x90 //1001 0nm0 - reading recieve buffer
+#define INSTRUCTION_LOAD_TX_BUFFER 0x40 //0100 0abc - writing transmit buffer
 #define READ_RX_BUFFER_SHIFT       2
 
 #define RXB0CTRL 0x60
 #define RXB1CTRL 0x70
-#define RXBCTRL_RXM_ANY 0x60   /* filters and masks off: any frame is received */
-#define RXBCTRL_BUKT    0x04   /* RXB0 rolls over into RXB1 when full */
+#define RXBCTRL_RXM_ANY 0x60 //0110 0000 - accept any
+#define RXBCTRL_BUKT    0x04 //0000 0100 - RXB0 full
 
-/* Buffer layout from SIDH, same in TX and RX buffers (datasheet 3.0/4.0) */
-#define FRAME_HEADER_LENGTH 5   /* SIDH, SIDL, EID8, EID0, DLC */
+#define FRAME_HEADER_LENGTH 5
 #define HEADER_SIDH 0
 #define HEADER_SIDL 1
 #define HEADER_DLC  4
-#define SIDH_SHIFT  3           /* SIDH holds ID bits 10-3 */
-#define SIDL_SHIFT  5           /* SIDL bits 7-5 hold ID bits 2-0 */
+#define SIDH_SHIFT  3
+#define SIDL_SHIFT  5
 #define SIDL_ID_MASK 0x07
-#define SIDL_SRR    0x10        /* RX: standard remote frame */
-#define SIDL_IDE    0x08        /* RX: extended frame */
+#define SIDL_SRR    0x10
+#define SIDL_IDE    0x08
 #define DLC_MASK    0x0F
 
-/* A mode switch waits for pending transmissions to finish (datasheet 10.0) */
 #define MODE_SWITCH_TIMEOUT_MS 10
 
 #define TXB_ALL (MCP2515_TXB0 | MCP2515_TXB1 | MCP2515_TXB2)
 
-/* The oscillator start-up timer holds the chip for 128 OSC1 cycles,
-   8 us with the 16 MHz crystal (datasheet 8.1); wait with margin. */
+//wait for crystal to stabilize
 #define RESET_WAIT_US 100
 
 static volatile bool interrupt_flag;
 
 ISR(INT0_vect)
 {
-    /* No SPI here: the main loop may be mid-transfer with another slave */
     interrupt_flag = true;
 }
 
 static void int0_init(void)
 {
-    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN);
-    /* ISC01 only is falling edge; OR in, since xmem owns SRE in MCUCR */
-    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01));
-    GIFR = _BV(INTF0);   /* drop an edge latched before we were ready */
-    GICR |= _BV(INT0);
+    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN); //PD2=input
+    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01)); //trigger on falling edge
+    GIFR = _BV(INTF0); //clear old trigger
+    GICR |= _BV(INT0); //enable INT0
 }
 
-/* Every instruction starts with CS going low; the chip takes the first byte
-   after that as the instruction, so each one needs its own select. */
 static void begin(uint8_t instruction)
 {
     spi_select(SPI_SLAVE_CAN);
@@ -79,7 +71,7 @@ void mcp2515_read_array(uint8_t address, uint8_t *data, uint8_t count)
     begin(INSTRUCTION_READ);
     (void)spi_transfer(address);
     for (uint8_t i = 0; i < count; ++i) {
-        data[i] = spi_transfer(0x00);
+        data[i] = spi_transfer(0x00); //send dummy, recieve register value
     }
     spi_deselect_all();
 }
@@ -106,7 +98,7 @@ void mcp2515_write(uint8_t address, uint8_t value)
 
 bool mcp2515_request_to_send(uint8_t buffers)
 {
-    /* Stray high bits would turn this into a different instruction */
+    // Stray high bits would turn this into a different instruction
     if (buffers == 0 || (buffers & (uint8_t)~TXB_ALL)) {
         return false;
     }
@@ -131,11 +123,10 @@ void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data)
     spi_deselect_all();
 }
 
-/* Filters are left unset by reset, so they are turned off rather than trusted */
 static void receive_init(void)
 {
-    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT);
-    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY);
+    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT); //0x64 - accept all + rollover
+    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY); //0x60 accept all
     mcp2515_write(MCP2515_CANINTE, MCP2515_INT_RX0 | MCP2515_INT_RX1);
 }
 
@@ -224,10 +215,8 @@ bool mcp2515_interrupt_pending(void)
     bool edge_seen;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         edge_seen = interrupt_flag;
-        interrupt_flag = false;
+        interrupt_flag = false; //clear flag
     }
-    /* INT stays low until every flag is cleared, so a flag set while it was
-       already low makes no new edge. The pin level catches that case. */
     bool pin_low = !(PIND & _BV(MCP2515_INT_PIN));
     return edge_seen || pin_low;
 }

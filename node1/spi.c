@@ -6,6 +6,7 @@ static const uint8_t cs_pins[SPI_SLAVE_COUNT] = {
     [SPI_SLAVE_CAN] = SPI_CAN_CS,
 };
 
+//PORTB |= csmask() sets PB1,2,3 high
 static uint8_t cs_mask(void)
 {
     uint8_t mask = 0;
@@ -36,17 +37,18 @@ void spi_write(const uint8_t *data, uint8_t count)
 void spi_init(void)
 {
     spi_deselect_all();
-    /* PB4 is the fixed hardware SS pin, even when IO_CS uses PB2.
-     * Leaving it as an input can clear MSTR when it goes low. */
+
+    //set PB4 as input to keep MSTR bit
     PORTB |= _BV(PB4);
     DDRB |= _BV(PB4);
+
     PORTB &= (uint8_t)~(_BV(PB5) | _BV(PB6) | _BV(PB7));
     DDRB |= cs_mask() | _BV(PB5) | _BV(PB7);
+
+    //MOSI=input
     DDRB &= (uint8_t)~_BV(PB6);
 
-    /* Mode 0, MSB first, F_CPU/128 = 38.4 kHz at 4.9152 MHz.
-     * The IO-board PDF does not specify mode, bit order or maximum
-     * clock rate: these are starting settings to verify on hardware. */
+    // Mode 0, MSB first, F_CPU/128 = 38.4 kHz at 4.9152 MHz.
     SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPR1) | _BV(SPR0);
     SPSR = 0;
 }
