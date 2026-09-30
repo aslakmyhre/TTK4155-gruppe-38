@@ -1,3 +1,5 @@
+#include <avr/interrupt.h>
+#include <util/atomic.h>
 #include <util/delay.h>
 #include "mcp2515.h"
 #include "spi.h"
@@ -15,6 +17,23 @@
 /* The oscillator start-up timer holds the chip for 128 OSC1 cycles,
    8 us with the 16 MHz crystal (datasheet 8.1); wait with margin. */
 #define RESET_WAIT_US 100
+
+static volatile bool interrupt_flag;
+
+ISR(INT0_vect)
+{
+    /* No SPI here: the main loop may be mid-transfer with another slave */
+    interrupt_flag = true;
+}
+
+static void int0_init(void)
+{
+    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN);
+    /* ISC01 only is falling edge; OR in, since xmem owns SRE in MCUCR */
+    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01));
+    GIFR = _BV(INTF0);   /* drop an edge latched before we were ready */
+    GICR |= _BV(INT0);
+}
 
 /* Every instruction starts with CS going low; the chip takes the first byte
    after that as the instruction, so each one needs its own select. */
@@ -91,5 +110,19 @@ void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data)
 bool mcp2515_init(void)
 {
     mcp2515_reset();
+    int0_init();
     return (mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) == MCP2515_MODE_CONFIG;
+}
+
+bool mcp2515_interrupt_pending(void)
+{
+    bool edge_seen;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        edge_seen = interrupt_flag;
+        interrupt_flag = false;
+    }
+    /* INT stays low until every flag is cleared, so a flag set while it was
+       already low makes no new edge. The pin level catches that case. */
+    bool pin_low = !(PIND & _BV(MCP2515_INT_PIN));
+    return edge_seen || pin_low;
 }

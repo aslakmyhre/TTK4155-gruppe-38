@@ -1,3 +1,4 @@
+#include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -178,6 +179,7 @@ int main(void) {
         printf_P(PSTR("mcp2515: not in config mode after reset, CANSTAT %02X\n"),
                  mcp2515_read(MCP2515_CANSTAT));
     }
+    sei();
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);
 

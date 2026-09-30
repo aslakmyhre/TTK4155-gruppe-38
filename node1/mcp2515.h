@@ -1,12 +1,18 @@
 #ifndef MCP2515_H
 #define MCP2515_H
 
+#include <avr/io.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+/* INT is wired to INT0; the vector is fixed to this pin */
+#define MCP2515_INT_PIN PD2
 
 /* Register addresses, datasheet section 11 */
 #define MCP2515_CANSTAT 0x0E
 #define MCP2515_CANCTRL 0x0F
+#define MCP2515_CANINTE 0x2B
+#define MCP2515_CANINTF 0x2C
 
 /* OPMOD in CANSTAT and REQOP in CANCTRL share bits 7-5 */
 #define MCP2515_MODE_MASK     0xE0
@@ -41,8 +47,13 @@ uint8_t mcp2515_read_status(void);
 /* Only for registers shaded in the register map; others take a full write */
 void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data);
 
-/* Resets the controller. False if it is not in configuration mode afterwards,
-   which usually means wiring, clock or CS is wrong. */
+/* Resets the controller and enables INT0 on the falling edge of INT; global
+   interrupts (sei) are left to the caller. False if the controller is not in
+   configuration mode after reset, which usually means wiring, clock or CS is
+   wrong. INT only fires for events enabled in CANINTE, all off after reset. */
 bool mcp2515_init(void);
+/* True while an enabled CANINTF flag is set. Clear the flags with bit modify,
+   then call again until false. */
+bool mcp2515_interrupt_pending(void);
 
 #endif
