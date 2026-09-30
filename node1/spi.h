@@ -8,13 +8,14 @@
 #define SPI_IO_CS PB2
 #define SPI_DISPLAY_CS PB1
 #define SPI_DISPLAY_DC PB0
-#define SPI_DISPLAY_RESET PB3
+#define SPI_CAN_CS PB3
 
-/* Every slave on the bus. Adding one (e.g. the CAN controller) is one entry
- * here and one CS pin in spi.c. */
+/* Every slave on the bus. Adding one is one entry here and one CS pin in
+ * spi.c. */
 enum spi_slave {
     SPI_SLAVE_IO,
     SPI_SLAVE_DISPLAY,
+    SPI_SLAVE_CAN,
     SPI_SLAVE_COUNT
 };
 

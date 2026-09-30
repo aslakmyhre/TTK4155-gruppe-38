@@ -9,7 +9,6 @@
 
 // 128x64 SSD1309 on the IO-board. Pins are in spi.h; call spi_init() first.
 void oled_init(void);
-void oled_reset(void);
 void oled_clear(void);
 void oled_clear_line(uint8_t line);          /* leaves the cursor at its start */
 void oled_home(void);

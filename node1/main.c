@@ -7,6 +7,7 @@
 #include "image.h"
 #include "io_board.h"
 #include "joystick.h"
+#include "mcp2515.h"
 #include "menu.h"
 #include "oled.h"
 #include "spi.h"
@@ -173,6 +174,10 @@ int main(void) {
     sram_test();
 
     spi_init();
+    if (!mcp2515_init()) {
+        printf_P(PSTR("mcp2515: not in config mode after reset, CANSTAT %02X\n"),
+                 mcp2515_read(MCP2515_CANSTAT));
+    }
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);
 

@@ -3,6 +3,7 @@
 static const uint8_t cs_pins[SPI_SLAVE_COUNT] = {
     [SPI_SLAVE_IO] = SPI_IO_CS,
     [SPI_SLAVE_DISPLAY] = SPI_DISPLAY_CS,
+    [SPI_SLAVE_CAN] = SPI_CAN_CS,
 };
 
 static uint8_t cs_mask(void)

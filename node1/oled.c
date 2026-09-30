@@ -29,18 +29,6 @@ static void oled_data(uint8_t d)
     spi_deselect_all();
 }
 
-void oled_reset(void)
-{
-    PORTB |= (1 << SPI_DISPLAY_RESET);
-    PORTB &= ~(1 << SPI_DISPLAY_DC);
-    DDRB  |= (1 << SPI_DISPLAY_RESET) | (1 << SPI_DISPLAY_DC);
-    /* DISP_RES must connect ONLY to PB3, not also be tied to 5V by JP1 */
-    PORTB &= ~(1 << SPI_DISPLAY_RESET);
-    _delay_ms(1);
-    PORTB |=  (1 << SPI_DISPLAY_RESET);
-    _delay_ms(100);   /* let the display power up before talking to it */
-}
-
 void oled_goto_line(uint8_t line)
 {
     current_line = line % OLED_LINES;
@@ -87,7 +75,10 @@ void oled_contrast(uint8_t level)
 
 void oled_init(void)
 {
-    oled_reset();
+    PORTB &= ~(1 << SPI_DISPLAY_DC);
+    DDRB  |= (1 << SPI_DISPLAY_DC);
+    /* DISP_RES is not driven: PB3 is the CAN controller's CS */
+    _delay_ms(100);   /* let the display power up before talking to it */
 
     oled_cmd(0xAE);   /* display off while configuring          */
     oled_cmd(0xA1);   /* flip horizontally                      */
