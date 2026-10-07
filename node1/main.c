@@ -200,7 +200,7 @@ static void can_test(void)
         struct can_message message = {
             .id = CAN_TEST_ID,
             .length = CAN_TEST_LENGTH,
-            .data = { (uint8_t)pos.x, (uint8_t)pos.y },
+            .data = { (uint8_t)pos.x+100, (uint8_t)pos.y+100 },
         };
         if (can_send(&message))
             sent++;
