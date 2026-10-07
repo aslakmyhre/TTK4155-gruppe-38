@@ -43,7 +43,8 @@ int main()
     WDT->WDT_MR = WDT_MR_WDDIS; //Disable Watchdog Timer
 
     //Uncomment after including uart above
-    uart_init(84000000, 115200);   // SystemInit() runs the core at 84 MHz
+    uart_init(SystemCoreClock, 115200);   // SystemInit() runs the core at 84 MHz
+    setvbuf(stdout, NULL, _IONBF, 0);
     printf("Hello World\n\r");
     PMC -> PMC_PCER0 = (1 << ID_PIOB);
 
@@ -53,10 +54,10 @@ int main()
 
     // Exercise 6.1: servo header signal pin (PB13) high
     PIOB->PIO_SODR = PB13_MASK;
-    printf("PB13 (servo signal) set high\n\r");
-
+    
     while (1)
     {
+        printf("PB13 (servo signal) set high\n\r");
         /* code */
         if (PIOB->PIO_ODSR & PB13_MASK)
             PIOB->PIO_CODR = PB13_MASK;
