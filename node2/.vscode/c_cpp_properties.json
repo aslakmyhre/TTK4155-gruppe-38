@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "name": "ARM ATSAM3X8E",
+      "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+      "compilerArgs": [
+        "-mcpu=cortex-m3",
+        "-mthumb"
+      ],
+      "includePath": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/sam",
+        "${workspaceFolder}/sam/sam3x/include",
+        "${workspaceFolder}/sam/sam3x/source",
+        "${workspaceFolder}/sam/cmsis"
+      ],
+      "defines": [
+        "__SAM3X8E__"
+      ],
+      "cStandard": "c11",
+      "intelliSenseMode": "gcc-arm"
+    }
+  ],
+  "version": 4
+}
