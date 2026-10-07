@@ -79,11 +79,11 @@ int main()
         // exercise 6.3
         //printf("PB13 (servo signal) set high\n\r");
         /* code */
-        if (PIOB->PIO_ODSR & PB13_MASK)
-            PIOB->PIO_CODR = PB13_MASK;
-        else 
-            PIOB->PIO_SODR = PB13_MASK;
-        delay_ms(500);
+        //if (PIOB->PIO_ODSR & PB13_MASK)
+        //    PIOB->PIO_CODR = PB13_MASK;
+        //else 
+        //    PIOB->PIO_SODR = PB13_MASK;
+        //delay_ms(500);
         
     }
     #include <stdio.h>

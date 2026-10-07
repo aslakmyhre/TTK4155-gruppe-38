@@ -12,7 +12,7 @@ bool can_init(void)
        talk to node 2; loopback needs neither. */
     
     if (!mcp2515_init()) {
-        return;
+        return false;
     }
 
     mcp2515_write(0x2A,0x03);
