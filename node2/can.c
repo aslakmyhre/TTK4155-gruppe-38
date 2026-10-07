@@ -55,7 +55,8 @@ void can_init(CanInit init, uint8_t rxInterrupt){
     
     // receive
     CAN0->CAN_MB[rxMailbox].CAN_MAM = 0; // Accept all messages
-    CAN0->CAN_MB[rxMailbox].CAN_MID = CAN_MID_MIDE;
+    // MIDE clear: this mailbox takes standard 11-bit IDs, which is what node 1 sends
+    CAN0->CAN_MB[rxMailbox].CAN_MID = 0;
     CAN0->CAN_MB[rxMailbox].CAN_MMR = CAN_MMR_MOT_MB_RX;
     CAN0->CAN_MB[rxMailbox].CAN_MCR |= CAN_MCR_MTCR;
     if(rxInterrupt){
