@@ -1,4 +1,6 @@
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
+#include <stdio.h>
 #include <util/atomic.h>
 #include <util/delay.h>
 #include "mcp2515.h"
@@ -15,6 +17,10 @@
 #define INSTRUCTION_LOAD_TX_BUFFER 0x40 //0100 0abc - writing transmit buffer
 #define READ_RX_BUFFER_SHIFT       2
 
+#define TEC      0x1C //transmit error counter
+#define REC      0x1D //receive error counter
+#define EFLG     0x2D //error flags
+#define TXB0CTRL 0x30
 #define RXB0CTRL 0x60
 #define RXB1CTRL 0x70
 #define RXBCTRL_RXM_ANY 0x60 //0110 0000 - accept any
@@ -208,6 +214,16 @@ bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length)
         return read_rx_buffer(1, id, data, length);
     }
     return false;
+}
+
+/* For bus debugging. CANSTAT top bits: mode. TXB0CTRL 0x08: send pending,
+   0x10: transmit error. TEC >= 128 with EFLG 0x10: sending but nobody
+   acknowledges. */
+void mcp2515_print_registers(void)
+{
+    printf_P(PSTR("CANSTAT %02X TXB0CTRL %02X TEC %u REC %u EFLG %02X\n"),
+             mcp2515_read(MCP2515_CANSTAT), mcp2515_read(TXB0CTRL),
+             mcp2515_read(TEC), mcp2515_read(REC), mcp2515_read(EFLG));
 }
 
 bool mcp2515_interrupt_pending(void)

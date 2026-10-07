@@ -10,6 +10,7 @@
 #include "io_board.h"
 #include "joystick.h"
 #include "joystick_box.h"
+#include "mcp2515.h"
 #include "menu.h"
 #include "oled.h"
 #include "spi.h"
@@ -30,6 +31,7 @@
 #define CAN_TEST_ID         0x010 /* joystick position: x, y in percent */
 #define CAN_TEST_LENGTH     2
 #define CAN_TEST_COUNT_LINE 6
+#define CAN_DEBUG_EVERY     20    /* passes per register dump, ~1 s: one line takes ~60 ms at 9600 baud */
 #define SENT_BOX_X          12    /* 40 px boxes centered in each half */
 #define RECEIVED_BOX_X      76
 #define SENT_LABEL_X        8
@@ -181,6 +183,7 @@ static void can_test(void)
     uint16_t sent = 0;
     uint16_t received = 0;
     bool was_pressed = true;
+    uint8_t passes = 0;
 
     oled_clear();
     oled_pos(0, SENT_LABEL_X);
@@ -217,6 +220,10 @@ static void can_test(void)
 
         oled_pos(CAN_TEST_COUNT_LINE, 0);
         fprintf_P(out, PSTR("TX %5u   RX %5u"), sent, received);
+        if (++passes == CAN_DEBUG_EVERY) {
+            passes = 0;
+            mcp2515_print_registers();
+        }
         _delay_ms(CAN_TEST_PERIOD_MS);
     }
 }
@@ -248,6 +255,7 @@ int main(void) {
     if (!can_init()) {
         printf_P(PSTR("can: init failed\n"));
     }
+    mcp2515_print_registers();
     sei();
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);

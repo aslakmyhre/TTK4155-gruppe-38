@@ -6,6 +6,7 @@
 #include "can.h"
 
 #define PB13_MASK (1 << 13)
+#define CAN_DEBUG_PERIOD_MS 500
 
 /*
  * Remember to update the Makefile with the (relative) path to the uart.c file.
@@ -68,6 +69,7 @@ int main()
     }, 0);
     printf("CAN_BR = 0x%08lX (expect 0x00290651)\n\r", (unsigned long)CAN0->CAN_BR);
     CanMsg msg;
+    uint32_t lastDebugPrint = msTicks;
    
 
     while (1)
@@ -76,6 +78,13 @@ int main()
         // Print every CAN message received 
         if (can_rx(&msg)){
             can_printmsg(msg);
+        }
+
+        // Bus debugging without blocking: one mailbox, so a delay here would drop frames.
+        // CAN_SR bits 16-19: error active/warning/passive/bus off. CAN_ECR: REC bits 0-7, TEC bits 16-23
+        if (msTicks - lastDebugPrint >= CAN_DEBUG_PERIOD_MS){
+            lastDebugPrint = msTicks;
+            printf("CAN_SR %08lX CAN_ECR %08lX\n\r", (unsigned long)CAN0->CAN_SR, (unsigned long)CAN0->CAN_ECR);
         }
 
         // exercise 6.3

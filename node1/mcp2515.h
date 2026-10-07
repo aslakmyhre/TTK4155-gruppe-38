@@ -79,4 +79,7 @@ bool mcp2515_set_mode(uint8_t mode);
 bool mcp2515_transmit(uint16_t id, const uint8_t *data, uint8_t length);
 bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length);
 
+//prints mode, error counters and flags over UART
+void mcp2515_print_registers(void);
+
 #endif
