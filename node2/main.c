@@ -56,15 +56,17 @@ int main()
     PIOB -> PIO_OER = PB13_MASK; 
     PIOB->PIO_SODR = PB13_MASK;    
     
+    // Must match node 1's MCP2515 CNF1-3 = 0x03, 0xAE, 0x01. Each field is TQ - 1:
+    // TQ = 42 / 84 MHz = 0.5 us, sync 1 + prop 7 + phase1 6 + phase2 2 = 16 TQ = 125 kbit/s
     can_init((CanInit){
-        .brp = 41, 
-        .propag = 4, 
-        .phase1 = 5, 
-        .phase2 =  3, 
+        .brp = 41,
+        .propag = 6,
+        .phase1 = 5,
+        .phase2 = 1,
         .sjw = 0,
         .smp = 0
     }, 0);
-    printf("CAN_BR = 0x%081X (expect 0x00290453)\n\r", CAN0->CAN_BR);
+    printf("CAN_BR = 0x%08lX (expect 0x00290651)\n\r", (unsigned long)CAN0->CAN_BR);
     CanMsg msg;
    
 
@@ -86,6 +88,4 @@ int main()
         //delay_ms(500);
         
     }
-    #include <stdio.h>
-
 }

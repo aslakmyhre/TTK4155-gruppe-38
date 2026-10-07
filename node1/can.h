@@ -17,8 +17,9 @@ struct can_message {
     uint8_t data[CAN_MAX_DATA_LENGTH];
 };
 
-/* Loopback mode for now: sent messages come straight back to can_receive().
-   False if the controller does not respond or does not change mode. */
+/* Normal mode at 125 kbit/s, bit timing matched to node 2. False if the
+   controller does not respond, the bit timing does not read back, or it does
+   not change mode. */
 bool can_init(void);
 /* False if id or length is out of range, or the controller is still busy
    sending the previous message. */

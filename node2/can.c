@@ -11,7 +11,7 @@ void can_printmsg(CanMsg m){
     for(uint8_t i = 1; i < m.length; i++){
         printf(", %d", m.byte[i]);
     }
-    printf("})\n");
+    printf("})\n\r");
 }
 
 
@@ -73,8 +73,8 @@ void can_init(CanInit init, uint8_t rxInterrupt){
 void can_tx(CanMsg m){
     while(!(CAN0->CAN_MB[txMailbox].CAN_MSR & CAN_MSR_MRDY)){}
     
-    // Set message ID and use CAN 2.0B protocol
-    CAN0->CAN_MB[txMailbox].CAN_MID = CAN_MID_MIDvA(m.id) | CAN_MID_MIDE ;
+    // Standard 11-bit ID (CAN 2.0A): node 1 drops extended frames
+    CAN0->CAN_MB[txMailbox].CAN_MID = CAN_MID_MIDvA(m.id);
         
     // Coerce maximum 8 byte length
     m.length = m.length > 8 ? 8 : m.length;
