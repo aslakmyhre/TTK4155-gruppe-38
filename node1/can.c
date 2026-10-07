@@ -10,7 +10,18 @@ bool can_init(void)
 {
     /* TODO(exercise 3.6): set bit timing (CNF1-3) and use normal mode to
        talk to node 2; loopback needs neither. */
-    return mcp2515_init() && mcp2515_set_mode(MCP2515_MODE_LOOPBACK);
+    
+    if (!mcp2515_init()) {
+        return;
+    }
+
+    mcp2515_write(0x2A,0x03);
+    mcp2515_write(0x29,0xAE);
+    mcp2515_write(0x28,0x01);
+    
+    //return mcp2515_init() && mcp2515_set_mode(MCP2515_MODE_LOOPBACK);
+
+    return mcp2515_set_mode(MCP2515_MODE_NORMAL);
 }
 
 bool can_send(const struct can_message *message)

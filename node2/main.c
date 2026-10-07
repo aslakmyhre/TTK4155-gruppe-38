@@ -2,6 +2,8 @@
 #include <stdarg.h>
 
 #include "sam.h"
+#include "uart.h"
+#include "can.h"
 
 #define PB13_MASK (1 << 13)
 
@@ -14,7 +16,7 @@
  * If you get errors such as "arm-none-eabi-gcc: no such file", you may need to reinstall the arm gcc packages using
  * apt or your favorite package manager.
  */
-#include "uart.h"
+
 volatile uint32_t msTicks = 0;
 
 // SysTick Interrupt Handler (Called every 1 ms)
@@ -46,24 +48,44 @@ int main()
     uart_init(SystemCoreClock, 115200);   // SystemInit() runs the core at 84 MHz
     setvbuf(stdout, NULL, _IONBF, 0);
     printf("Hello World\n\r");
-    PMC -> PMC_PCER0 = (1 << ID_PIOB);
 
+    // Exercise 6.1: servo header signal pin (PB13) high
+    PMC -> PMC_PCER0 = (1 << ID_PIOB);
     PIOB -> PIO_PER = PB13_MASK;
     PIOB->PIO_CODR = PB13_MASK;
     PIOB -> PIO_OER = PB13_MASK; 
-
-    // Exercise 6.1: servo header signal pin (PB13) high
-    PIOB->PIO_SODR = PB13_MASK;
+    PIOB->PIO_SODR = PB13_MASK;    
     
+    can_init((CanInit){
+        .brp = 41, 
+        .propag = 4, 
+        .phase1 = 5, 
+        .phase2 =  3, 
+        .sjw = 0,
+        .smp = 0
+    }, 0);
+    printf("CAN_BR = 0x%081X (expect 0x00290453)\n\r", CAN0->CAN_BR);
+    CanMsg msg;
+   
+
     while (1)
     {
-        printf("PB13 (servo signal) set high\n\r");
+
+        // Print every CAN message received 
+        if (can_rx(&msg)){
+            can_printmsg(msg);
+        }
+
+        // exercise 6.3
+        //printf("PB13 (servo signal) set high\n\r");
         /* code */
         if (PIOB->PIO_ODSR & PB13_MASK)
             PIOB->PIO_CODR = PB13_MASK;
         else 
             PIOB->PIO_SODR = PB13_MASK;
         delay_ms(500);
+        
     }
-    
+    #include <stdio.h>
+
 }

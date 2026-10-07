@@ -40,6 +40,25 @@
 #define MCP2515_STATUS_TX2REQ   0x40
 #define MCP2515_STATUS_TX2IF    0x80
 
+// CNF1 Register Values
+#define SJW1            0x00
+#define SJW2            0x40
+#define SJW3            0x80
+#define SJW4            0xC0
+
+
+// CNF2 Register Values
+#define BTLMODE			0x80
+#define SAMPLE_1X       0x00
+#define SAMPLE_3X       0x40
+
+
+// CNF3 Register Values
+#define SOF_ENABLE		0x80
+#define SOF_DISABLE		0x00
+#define WAKFIL_ENABLE	0x40
+#define WAKFIL_DISABLE	0x00
+
 
 void mcp2515_reset(void);
 uint8_t mcp2515_read(uint8_t address);
