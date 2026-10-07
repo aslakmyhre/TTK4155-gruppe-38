@@ -14,7 +14,7 @@
  * If you get errors such as "arm-none-eabi-gcc: no such file", you may need to reinstall the arm gcc packages using
  * apt or your favorite package manager.
  */
-//#include "../path_to/uart.h"
+#include "uart.h"
 volatile uint32_t msTicks = 0;
 
 // SysTick Interrupt Handler (Called every 1 ms)
@@ -43,13 +43,17 @@ int main()
     WDT->WDT_MR = WDT_MR_WDDIS; //Disable Watchdog Timer
 
     //Uncomment after including uart above
-    //uart_init(/*cpufreq*/, /*baud*/);
-    //printf("Hello World\n\r");
+    uart_init(84000000, 115200);   // SystemInit() runs the core at 84 MHz
+    printf("Hello World\n\r");
     PMC -> PMC_PCER0 = (1 << ID_PIOB);
 
     PIOB -> PIO_PER = PB13_MASK;
     PIOB->PIO_CODR = PB13_MASK;
     PIOB -> PIO_OER = PB13_MASK; 
+
+    // Exercise 6.1: servo header signal pin (PB13) high
+    PIOB->PIO_SODR = PB13_MASK;
+    printf("PB13 (servo signal) set high\n\r");
 
     while (1)
     {
