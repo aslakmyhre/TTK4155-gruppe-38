@@ -14,7 +14,7 @@
 #define JOYSTICK_CAN_ID      0x010
 #define JOYSTICK_CAN_LENGTH  2
 #define JOYSTICK_OFFSET      100
-#define JOYSTICK_TIMEOUT_MS  500           // y unchanged (or no frame) for this long -> servo to centre
+#define JOYSTICK_TIMEOUT_MS  500           // no joystick frame for this long -> servo to centre
 
 /*
  * Remember to update the Makefile with the (relative) path to the uart.c file.
@@ -102,28 +102,20 @@ int main(void)
     {
         // Read every CAN frame; joystick frames move the servo
         if (can_rx(&msg)){
-            int8_t new_y;
-            if (joystick_decode(&msg, &joy_x, &new_y)) {
-                // Only a changed y restarts the timeout. After a timeout the servo
-                // stays at centre until y moves, instead of jumping back to the old
-                // position on the next identical frame.
-                if (new_y != joy_y) {
-                    joy_y = new_y;
-                    servo_set_position(joy_y);
-                    lastJoystick = msTicks;
-                    joystick_timed_out = 0;
-                }
+            if (joystick_decode(&msg, &joy_x, &joy_y)) {
+                servo_set_position(joy_y);
+                lastJoystick = msTicks;
+                joystick_timed_out = 0;
             } else {
                 can_printmsg(msg);         // anything else: print it so we notice
             }
         }
 
-        // Safety: y unchanged for the timeout, which also covers node 1 not sending
-        // at all (cable out, left the CAN TEST screen), -> go to centre
+        // Safety: if node 1 stops sending (cable out, left the CAN TEST screen), go to centre
         if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {
             joystick_timed_out = 1;
             servo_set_position(0);
-            printf("Joystick timeout (y unchanged or no frames), servo to centre\n\r");
+            printf("Joystick timeout, servo to centre\n\r");
         }
 
         // Bus debugging without blocking: one mailbox, so a delay here would drop frames.
