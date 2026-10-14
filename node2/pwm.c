@@ -10,12 +10,13 @@
 
 
 static uint32_t us_to_ticks(uint32_t us){
-    return (us * PWM_CLK_HZ) / 1000000UL; // 20000 us -> 13125 ticks
+    // 64-bit maths: 20000 * 656250 = 1.3e10 does not fit in 32 bits
+    return (uint32_t)(((uint64_t)us * PWM_CLK_HZ) / 1000000UL); // 20000 us -> 13125 ticks
 }
 
 void pwm_init(void)
 {
-    // PIOD (ID 12): PCER0, PWM (ID 36): PCER1
+    // PIOB (ID 12): PCER0, PWM (ID 36): PCER1
     PMC->PMC_PCER0 = (1u << ID_PIOB);
     PMC->PMC_PCER1 = (1u << (ID_PWM - 32));
 
