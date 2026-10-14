@@ -10,7 +10,8 @@ SOURCE_FILES = \
 	main.c \
 	uart.c \
 	can.c \
-	pwm.c
+	pwm.c \
+	servo.c
 #	../path_to/uart.c \
 #   filename1.c \
 #   filename2.c \

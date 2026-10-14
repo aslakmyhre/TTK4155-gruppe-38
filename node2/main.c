@@ -3,9 +3,17 @@
 #include "uart.h"
 #include "can.h"
 #include "pwm.h"                           // PWM driver (servo on PB13)
+#include "servo.h"                         // Servo driver: percent -> pulse width
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
+
+// Joystick frame from node 1 (node1/main.c, can_test):
+//   id 0x010, length 2, byte[0] = x + 100, byte[1] = y + 100  (x, y in -100..100 percent)
+#define JOYSTICK_CAN_ID      0x010
+#define JOYSTICK_CAN_LENGTH  2
+#define JOYSTICK_OFFSET      100
+#define JOYSTICK_TIMEOUT_MS  500           // no joystick frame for this long -> servo to centre
 
 /*
  * Remember to update the Makefile with the (relative) path to the uart.c file.
@@ -22,6 +30,19 @@ volatile uint32_t msTicks = 0;
 // SysTick interrupt, every 1 ms
 void SysTick_Handler(void) {
     msTicks++;
+}
+
+// Decodes a joystick frame into x and y percent. Returns 0 if the frame is not
+// a valid joystick frame, so garbage on the bus can never move the servo.
+static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y)
+{
+    if (m->id != JOYSTICK_CAN_ID || m->length != JOYSTICK_CAN_LENGTH)
+        return 0;
+    if (m->byte[0] > 2 * JOYSTICK_OFFSET || m->byte[1] > 2 * JOYSTICK_OFFSET)
+        return 0;                          // outside 0..200, not a valid position
+    *x = (int8_t)((int16_t)m->byte[0] - JOYSTICK_OFFSET);
+    *y = (int8_t)((int16_t)m->byte[1] - JOYSTICK_OFFSET);
+    return 1;
 }
 
 int main(void)
@@ -43,8 +64,9 @@ int main(void)
     // PIOB -> PIO_OER = PB13_MASK; 
     // PIOB->PIO_SODR = PB13_MASK;    
 
-    // PWM on PB13 (servo header)
-    pwm_init();
+    // PWM on PB13 (servo header), via the servo driver. Starts at centre (1.5 ms)
+    // pwm_init();                         // replaced by servo_init(), which calls it
+    servo_init();
     printf("PWM CPRD = %lu (expect 13125)\n\r", PWM->PWM_CH_NUM[1].PWM_CPRD);
 
     // Must match node 1's MCP2515 CNF1-3 = 0x03, 0xAE, 0x01. Each field is TQ - 1:
@@ -62,35 +84,56 @@ int main(void)
     CanMsg msg;
     uint32_t lastDebugPrint = msTicks;
 
-    // PWM test sequence: centre, min, max, then out-of-range values to test the clamp
-    const uint32_t test_pulses[] = {1500, 900, 2100, 3000, 500};
-    const uint32_t n_tests = sizeof(test_pulses) / sizeof(test_pulses[0]);
-    uint32_t test_idx = 0;
-    uint32_t lastStep = 0;
+    // Joystick state (servo follows the y-axis, the lab says x-axis is for the motor)
+    int8_t joy_x = 0;
+    int8_t joy_y = 0;
+    uint32_t lastJoystick = msTicks;
+    int joystick_timed_out = 1;            // centre until the first frame arrives
+
+    // PWM test sequence (Exercise 7.1/7.3). Disabled: the servo now follows the joystick
+    // const uint32_t test_pulses[] = {1500, 900, 2100, 3000, 500};
+    // const uint32_t n_tests = sizeof(test_pulses) / sizeof(test_pulses[0]);
+    // uint32_t test_idx = 0;
+    // uint32_t lastStep = 0;
 
     while (1)
     {
-        // Print every CAN message received 
+        // Read every CAN frame; joystick frames move the servo
         if (can_rx(&msg)){
-            can_printmsg(msg);
+            if (joystick_decode(&msg, &joy_x, &joy_y)) {
+                servo_set_position(joy_y);
+                lastJoystick = msTicks;
+                joystick_timed_out = 0;
+            } else {
+                can_printmsg(msg);         // anything else: print it so we notice
+            }
+        }
+
+        // Safety: if node 1 stops sending (cable out, left the CAN TEST screen), go to centre
+        if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {
+            joystick_timed_out = 1;
+            servo_set_position(0);
+            printf("Joystick timeout, servo to centre\n\r");
         }
 
         // Bus debugging without blocking: one mailbox, so a delay here would drop frames.
         // CAN_SR bits 16-19: error active/warning/passive/bus off. CAN_ECR: REC bits 0-7, TEC bits 16-23
         if (msTicks - lastDebugPrint >= CAN_DEBUG_PERIOD_MS){
             lastDebugPrint = msTicks;
-            printf("CAN_SR %08lX CAN_ECR %08lX\n\r", (unsigned long)CAN0->CAN_SR, (unsigned long)CAN0->CAN_ECR);
+            printf("CAN_SR %08lX CAN_ECR %08lX  joy x %4d y %4d  CDTY %lu\n\r",
+                   (unsigned long)CAN0->CAN_SR, (unsigned long)CAN0->CAN_ECR,
+                   joy_x, joy_y, (unsigned long)PWM->PWM_CH_NUM[1].PWM_CDTY);
         }
 
-        // PWM test: step to the next test pulse every 2 s
-        if ((msTicks - lastStep) >= 2000) {
-            lastStep = msTicks;
-            uint32_t p = test_pulses[test_idx];
-            pwm_set_pulse_us(p);
-            printf("Requested %lu us (expect %lu us on scope)\n\r",
-                   p, p < 900 ? 900 : (p > 2100 ? 2100 : p));
-            test_idx = (test_idx + 1) % n_tests;
-        }
+        // PWM test: step to the next test pulse every 2 s. Disabled: servo follows joystick
+        // if ((msTicks - lastStep) >= 2000) {
+        //     lastStep = msTicks;
+        //     uint32_t p = test_pulses[test_idx];
+        //     pwm_set_pulse_us(p);
+        //     printf("Requested %lu us (expect %lu us on scope)\n\r",
+        //            p, p < 900 ? 900 : (p > 2100 ? 2100 : p));
+        //     test_idx = (test_idx + 1) % n_tests;
+        // }
 
         // exercise 6.3 (old PB13 heartbeat, disabled: PB13 is now PWM)
         //if (PIOB->PIO_ODSR & PB13_MASK)
