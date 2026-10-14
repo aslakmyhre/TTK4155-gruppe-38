@@ -9,7 +9,8 @@ SOURCE_FILES = \
 	$(BOOTUP) \
 	main.c \
 	uart.c \
-	can.c
+	can.c \
+	pwm.c
 #	../path_to/uart.c \
 #   filename1.c \
 #   filename2.c \
