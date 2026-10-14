@@ -30,7 +30,7 @@
 static uint32_t filter_acc;          // filtered value << IR_FILTER_SHIFT, keeps the fraction
 static uint16_t raw;
 static int      blocked;
-static uint32_t goals;
+static int      goal_seen;         // holdoff only applies after the first goal
 static uint32_t last_goal_ms;
 static uint32_t last_sample_ms;
 
@@ -60,7 +60,7 @@ int ir_init(void)
     // Start as blocked so a goal needs the beam to be seen clear first:
     // no phantom goal at power-up if the ball sits in the beam or thresholds are off.
     blocked = 1;
-    goals = 0;
+    goal_seen = 0;
     return 0;
 }
 
@@ -101,9 +101,9 @@ int ir_update(uint32_t now_ms)
         return 0;
 
     blocked = 1;
-    if (goals > 0 && now_ms - last_goal_ms < IR_GOAL_HOLDOFF_MS)
+    if (goal_seen && now_ms - last_goal_ms < IR_GOAL_HOLDOFF_MS)
         return 0;
-    goals++;
+    goal_seen = 1;
     last_goal_ms = now_ms;
     return 1;
 }
@@ -111,5 +111,3 @@ int ir_update(uint32_t now_ms)
 int      ir_blocked(void)     { return blocked; }
 uint16_t ir_raw(void)         { return raw; }
 uint16_t ir_filtered(void)    { return (uint16_t)(filter_acc >> IR_FILTER_SHIFT); }
-uint32_t ir_goals(void)       { return goals; }
-void     ir_reset_goals(void) { goals = 0; }

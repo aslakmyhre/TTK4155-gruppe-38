@@ -28,6 +28,7 @@
  */
 
 volatile uint32_t msTicks = 0;
+static uint32_t score = 0;                 // goals since start, read by the game later
 
 // SysTick interrupt, every 1 ms
 void SysTick_Handler(void) {
@@ -45,6 +46,16 @@ static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y)
     *x = (int8_t)((int16_t)m->byte[0] - JOYSTICK_OFFSET);
     *y = (int8_t)((int16_t)m->byte[1] - JOYSTICK_OFFSET);
     return 1;
+}
+
+// Lab 3.7.7 item 10: one point each time the ball breaks the IR beam.
+// ir_update() already filters noise and ignores bounces, so it reports each goal once.
+static void score_count(uint32_t now_ms)
+{
+    if (!ir_update(now_ms))
+        return;
+    score++;
+    printf("GOAL! score %lu\n\r", (unsigned long)score);
 }
 
 int main(void)
@@ -115,8 +126,7 @@ int main(void)
             }
         }
 
-        if (ir_update(msTicks))
-            printf("GOAL! total %lu\n\r", (unsigned long)ir_goals());
+        score_count(msTicks);
 
         // Safety: if node 1 stops sending (cable out, left the CAN TEST screen), go to centre
         if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {

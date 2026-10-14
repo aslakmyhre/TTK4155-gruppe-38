@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-// IR beam (goal) driver, lab manual 3.7.7 items 8-10.
+// IR beam (goal) driver, lab manual 3.7.7 items 8-9. Score counting is in main.c.
 // Reads the photodiode circuit with the internal ADC, low-pass filters it,
 // and turns it into blocked/clear with hysteresis. A clear -> blocked edge is a goal.
 // Pin, polarity, thresholds and timing are all set at the top of ir.c.
@@ -19,7 +19,5 @@ int ir_update(uint32_t now_ms);
 int      ir_blocked(void);         // 1 while the filtered signal says the beam is blocked
 uint16_t ir_raw(void);             // last ADC sample, 0..4095 (print this to find thresholds)
 uint16_t ir_filtered(void);        // low-pass filtered value, same scale
-uint32_t ir_goals(void);           // goals counted since init/reset
-void     ir_reset_goals(void);
 
 #endif
