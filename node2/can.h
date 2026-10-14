@@ -10,8 +10,8 @@ __attribute__((packed)) struct CanInit {
     union {
         struct {
             uint32_t phase2:4;  // Phase 2 segment
-            uint32_t propag:4;  // Propagation time segment
-            uint32_t phase1:4;  // Phase 1 segment
+            uint32_t phase1:4;  // Phase 1 segment   (CAN_BR bits 6:4)
+            uint32_t propag:4;  // Propagation segment (CAN_BR bits 10:8)
             uint32_t sjw:4;     // Synchronization jump width
             uint32_t brp:8;     // Baud rate prescaler
             uint32_t smp:8;     // Sampling mode
@@ -25,7 +25,7 @@ __attribute__((packed)) struct CanInit {
 // If `rxInterrupt` is not 0, an interrupt will be triggered when a message is received.
 // (See can.c for an example interrupt handler)
 // Example:
-//    can_init((CanInit){.brp = F_CPU/2000000-1, .phase1 = 5, .phase2 = 1, .propag = 6}, 0);
+//    can_init((CanInit){.brp = 41, .propag = 4, .phase1 = 5, .phase2 = 3, .sjw = 0}, 0); // 125 kbit/s at 84 MHz
 void can_init(CanInit init, uint8_t rxInterrupt);
 
 

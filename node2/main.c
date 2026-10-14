@@ -1,69 +1,84 @@
 #include <stdio.h>
-#include <stdarg.h>
-
 #include "sam.h"
-
-#define PB13_MASK (1 << 13)
-
-/*
- * Remember to update the Makefile with the (relative) path to the uart.c file.
- * This starter code will not compile until the UART file has been included in the Makefile. 
- * If you get somewhat cryptic errors referencing functions such as _sbrk, 
- * _close_r, _write_r, _fstat etc, you have most likely not done that correctly.
-
- * If you get errors such as "arm-none-eabi-gcc: no such file", you may need to reinstall the arm gcc packages using
- * apt or your favorite package manager.
- */
 #include "uart.h"
+#include "can.h"
+#include "pwm.h"                           // NEW: PWM driver
+
+// #define PB13_MASK (1u << 13)   // servo header signal pin (now owned by PWM driver)
+
 volatile uint32_t msTicks = 0;
 
-// SysTick Interrupt Handler (Called every 1 ms)
+// SysTick interrupt, every 1 ms
 void SysTick_Handler(void) {
     msTicks++;
 }
 
-// Initialize SysTick to trigger every 1 millisecond
-void SysTick_Init(void) {
-    // SystemCoreClock is typically 84000000 Hz on SAM3X
-    SysTick_Config(SystemCoreClock / 1000); 
-}
-
-// Delay function in milliseconds
-void delay_ms(volatile uint32_t ms) {
-    uint32_t startTicks = msTicks;
-    while ((msTicks - startTicks) < ms) {
-        __WFI(); // Wait For Interrupt (saves power while waiting)
-    }
-}
-
-int main()
+int main(void)
 {
-    SystemInit();
-    SysTick_Init();
-    WDT->WDT_MR = WDT_MR_WDDIS; //Disable Watchdog Timer
+    SystemInit();                          // 84 MHz core clock
+    WDT->WDT_MR = WDT_MR_WDDIS;            // disable watchdog
+    SysTick_Config(SystemCoreClock / 1000);
 
-    //Uncomment after including uart above
-    uart_init(SystemCoreClock, 115200);   // SystemInit() runs the core at 84 MHz
+    // UART over USB (programming port), printf goes here
+    uart_init(SystemCoreClock, 115200);
     setvbuf(stdout, NULL, _IONBF, 0);
-    printf("Hello World\n\r");
-    PMC -> PMC_PCER0 = (1 << ID_PIOB);
+    printf("Node 2 started, MCK = %lu Hz\n\r", SystemCoreClock);  // should print 84000000
 
-    PIOB -> PIO_PER = PB13_MASK;
-    PIOB->PIO_CODR = PB13_MASK;
-    PIOB -> PIO_OER = PB13_MASK; 
+    // PB13 as output (Exercise 6.1). Disabled: PB13 is now driven by PWM
+    // PMC->PMC_PCER0 = (1u << ID_PIOB);
+    // PIOB->PIO_PER  = PB13_MASK;
+    // PIOB->PIO_OER  = PB13_MASK;
+    // PIOB->PIO_SODR = PB13_MASK;
 
-    // Exercise 6.1: servo header signal pin (PB13) high
-    PIOB->PIO_SODR = PB13_MASK;
-    
+    // NEW: PWM on PB13 (servo header)
+    pwm_init();
+    printf("PWM CPRD = %lu (expect 13125)\n\r", PWM->PWM_CH_NUM[1].PWM_CPRD);
+
+    // CAN0: 125 kbit/s, TQ = 500 ns, 16 TQ per bit, sample point 75 %
+    // Must match MCP2515 on Node 1: CNF1 = 0x03, CNF2 = 0xAC, CNF3 = 0x03
+    can_init((CanInit){
+        .brp    = 41,   // TQ = (41+1) / 84 MHz = 500 ns
+        .propag = 4,    // 5 TQ
+        .phase1 = 5,    // 6 TQ
+        .phase2 = 3,    // 4 TQ
+        .sjw    = 0,    // 1 TQ
+        .smp    = 0     // sample once
+    }, 0);              // 0 = no RX interrupt, we poll
+    printf("CAN_BR = 0x%08lX (expect 0x00290453)\n\r", CAN0->CAN_BR);
+
+    // uint32_t lastToggle = 0;
+    CanMsg msg;
+
+    // NEW: PWM test sequence: centre, min, max, then out-of-range values to test the clamp
+    const uint32_t test_pulses[] = {1500, 900, 2100, 3000, 500};
+    const uint32_t n_tests = sizeof(test_pulses) / sizeof(test_pulses[0]);
+    uint32_t test_idx = 0;
+    uint32_t lastStep = 0;
+
     while (1)
     {
-        printf("PB13 (servo signal) set high\n\r");
-        /* code */
-        if (PIOB->PIO_ODSR & PB13_MASK)
-            PIOB->PIO_CODR = PB13_MASK;
-        else 
-            PIOB->PIO_SODR = PB13_MASK;
-        delay_ms(500);
+        // Print every CAN message received
+        if (can_rx(&msg)) {
+            can_printmsg(msg);
+        }
+
+        // Toggle PB13 every 500 ms without blocking (heartbeat). Disabled: PB13 is now PWM
+        // if ((msTicks - lastToggle) >= 500) {
+        //     lastToggle = msTicks;
+        //     if (PIOB->PIO_ODSR & PB13_MASK)
+        //         PIOB->PIO_CODR = PB13_MASK;
+        //     else
+        //         PIOB->PIO_SODR = PB13_MASK;
+        // }
+
+        // NEW: step to the next test pulse every 2 s
+        if ((msTicks - lastStep) >= 2000) {
+            lastStep = msTicks;
+            uint32_t p = test_pulses[test_idx];
+            pwm_set_pulse_us(p);
+            printf("Requested %lu us (expect %lu us on scope)\n\r",
+                   p, p < 900 ? 900 : (p > 2100 ? 2100 : p));
+            test_idx = (test_idx + 1) % n_tests;
+        }
     }
-    
 }
