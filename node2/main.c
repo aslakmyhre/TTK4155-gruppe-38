@@ -4,6 +4,7 @@
 #include "can.h"
 #include "pwm.h"                           // PWM driver (servo on PB13)
 #include "servo.h"                         // Servo driver: percent -> pulse width
+#include "motor.h"                         // Motor driver: held off for now
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
@@ -48,6 +49,7 @@ static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y)
 int main(void)
 {
     SystemInit();                          // 84 MHz core clock
+    motor_init();                          // FIRST: stop the motor (ENABLE pin floats high after reset)
     WDT->WDT_MR = WDT_MR_WDDIS;            // disable watchdog
     SysTick_Config(SystemCoreClock / 1000);
 
