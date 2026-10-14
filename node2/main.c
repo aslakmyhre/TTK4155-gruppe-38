@@ -5,6 +5,7 @@
 #include "pwm.h"                           // PWM driver (servo on PB13)
 #include "servo.h"                         // Servo driver: percent -> pulse width
 #include "motor.h"                         // Motor driver: held off for now
+#include "ir.h"                            // IR beam: goal detection on the internal ADC
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
@@ -71,6 +72,9 @@ int main(void)
     servo_init();
     printf("PWM CPRD = %lu (expect 13125)\n\r", PWM->PWM_CH_NUM[1].PWM_CPRD);
 
+    if (ir_init() != 0)
+        printf("IR: ADC init failed, no conversion\n\r");
+
     // Must match node 1's MCP2515 CNF1-3 = 0x03, 0xAE, 0x01. Each field is TQ - 1:
     // TQ = 42 / 84 MHz = 0.5 us, sync 1 + prop 7 + phase1 6 + phase2 2 = 16 TQ = 125 kbit/s
     can_init((CanInit){
@@ -111,6 +115,9 @@ int main(void)
             }
         }
 
+        if (ir_update(msTicks))
+            printf("GOAL! total %lu\n\r", (unsigned long)ir_goals());
+
         // Safety: if node 1 stops sending (cable out, left the CAN TEST screen), go to centre
         if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {
             joystick_timed_out = 1;
@@ -122,9 +129,10 @@ int main(void)
         // CAN_SR bits 16-19: error active/warning/passive/bus off. CAN_ECR: REC bits 0-7, TEC bits 16-23
         if (msTicks - lastDebugPrint >= CAN_DEBUG_PERIOD_MS){
             lastDebugPrint = msTicks;
-            printf("CAN_SR %08lX CAN_ECR %08lX  joy x %4d y %4d  CDTY %lu\n\r",
+            printf("CAN_SR %08lX CAN_ECR %08lX  joy x %4d y %4d  CDTY %lu  IR raw %4u filt %4u %s\n\r",
                    (unsigned long)CAN0->CAN_SR, (unsigned long)CAN0->CAN_ECR,
-                   joy_x, joy_y, (unsigned long)PWM->PWM_CH_NUM[1].PWM_CDTY);
+                   joy_x, joy_y, (unsigned long)PWM->PWM_CH_NUM[1].PWM_CDTY,
+                   ir_raw(), ir_filtered(), ir_blocked() ? "blocked" : "clear");
         }
 
         // PWM test: step to the next test pulse every 2 s. Disabled: servo follows joystick
