@@ -6,7 +6,7 @@
 #define PERIOD_US       20000UL     // 20 ms -> 50 Hz (Full PWM period)
 #define PULSE_MIN_US    900UL       // Shortest pulse
 #define PULSE_MAX_US    2100UL      // Longest pulse
-#define PULSE_CENTER_US 1400UL      // Servo's centre position
+#define PULSE_CENTER_US 1500UL      // Servo's centre position
 
 
 static uint32_t us_to_ticks(uint32_t us){
