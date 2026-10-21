@@ -17,6 +17,12 @@
 #define JOYSTICK_OFFSET      100
 #define JOYSTICK_TIMEOUT_MS  500           // no joystick frame for this long -> servo to centre
 
+// Score frame to node 1 (node1/main.c, game): id 0x020, length 2, score as uint16 little-endian.
+// Sent periodically, not just on a goal, so node 1 shows the score as soon as it opens GAME.
+#define SCORE_CAN_ID         0x020
+#define SCORE_CAN_LENGTH     2
+#define SCORE_SEND_PERIOD_MS 100
+
 /*
  * Remember to update the Makefile with the (relative) path to the uart.c file.
  * This starter code will not compile until the UART file has been included in the Makefile. 
@@ -55,7 +61,19 @@ static void score_count(uint32_t now_ms)
     if (!ir_update(now_ms))
         return;
     score++;
-    printf("GOAL! score %lu\n\r", (unsigned long)score);
+    printf("GOAL registered, score %lu\n\r", (unsigned long)score);
+}
+
+// Non-blocking: if node 1 is off the bus the last frame is never acknowledged,
+// and a blocking send would freeze the servo and joystick timeout with it.
+static void score_send(void)
+{
+    CanMsg m = {
+        .id = SCORE_CAN_ID,
+        .length = SCORE_CAN_LENGTH,
+        .byte = { (uint8_t)(score & 0xFF), (uint8_t)((score >> 8) & 0xFF) },
+    };
+    can_try_tx(m);
 }
 
 int main(void)
@@ -100,6 +118,7 @@ int main(void)
 
     CanMsg msg;
     uint32_t lastDebugPrint = msTicks;
+    uint32_t lastScoreSend = msTicks;
 
     // Joystick state (servo follows the y-axis, the lab says x-axis is for the motor)
     int8_t joy_x = 0;
@@ -127,6 +146,10 @@ int main(void)
         }
 
         score_count(msTicks);
+        if (msTicks - lastScoreSend >= SCORE_SEND_PERIOD_MS) {
+            lastScoreSend = msTicks;
+            score_send();
+        }
 
         // Safety: if node 1 stops sending (cable out, left the CAN TEST screen), go to centre
         if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {

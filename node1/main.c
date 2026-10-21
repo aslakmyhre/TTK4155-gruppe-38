@@ -36,10 +36,15 @@
 #define RECEIVED_BOX_X      76
 #define SENT_LABEL_X        8
 #define RECEIVED_LABEL_X    78
+#define GAME_PERIOD_MS      50    /* well inside node 2's 500 ms joystick timeout */
+#define GAME_SCORE_LINE     3
+#define SCORE_CAN_ID        0x020 /* from node 2: score as uint16, little-endian */
+#define SCORE_CAN_LENGTH    2
 
 #define COUNT(array) (sizeof (array) / sizeof (array)[0])
 
 enum action {
+    ACTION_GAME,
     ACTION_INPUT_VIEW,
     ACTION_LED_TEST,
     ACTION_CAN_TEST,
@@ -54,6 +59,7 @@ static const struct menu_item settings_items[] = {
 static const struct menu settings_menu = { "SETTINGS", settings_items, COUNT(settings_items) };
 
 static const struct menu_item main_items[] = {
+    { "GAME",       NULL,           ACTION_GAME },
     { "INPUT VIEW", NULL,           ACTION_INPUT_VIEW },
     { "LED TEST",   NULL,           ACTION_LED_TEST },
     { "CAN TEST",   NULL,           ACTION_CAN_TEST },
@@ -173,6 +179,18 @@ static struct joystick_position read_joystick(void)
         calibration_apply(&cal[JOYSTICK_Y_CHANNEL], raw[JOYSTICK_Y_CHANNEL]));
 }
 
+/* Node 2 moves the servo from this frame. False if the previous frame has not
+   been acknowledged yet (e.g. node 2 is off the bus). */
+static bool send_joystick(struct joystick_position pos)
+{
+    struct can_message message = {
+        .id = CAN_TEST_ID,
+        .length = CAN_TEST_LENGTH,
+        .data = { (uint8_t)pos.x+100, (uint8_t)pos.y+100 },
+    };
+    return can_send(&message);
+}
+
 /* Lab task 5: the calibrated joystick position is sent over CAN in loopback
    mode. Left box: what was sent. Right box: what came back from the MCP2515. */
 static void can_test(void)
@@ -197,17 +215,16 @@ static void can_test(void)
 
     while (!joystick_clicked(&was_pressed)) {
         struct joystick_position pos = read_joystick();
-        struct can_message message = {
-            .id = CAN_TEST_ID,
-            .length = CAN_TEST_LENGTH,
-            .data = { (uint8_t)pos.x+100, (uint8_t)pos.y+100 },
-        };
-        if (can_send(&message))
+        if (send_joystick(pos))
             sent++;
         joystick_box_show(&sent_box, pos);
 
         // Only this screen sends in loopback, so every frame should be ours
+        struct can_message message;
         while (can_receive(&message)) {
+            if (message.id == SCORE_CAN_ID) {
+                continue;   // node 2 sends this all the time; printing it would stall the screen
+            }
             if (message.id != CAN_TEST_ID || message.length != CAN_TEST_LENGTH) {
                 printf_P(PSTR("can test: unexpected id %03X length %u\n"),
                          message.id, message.length);
@@ -225,6 +242,50 @@ static void can_test(void)
             mcp2515_print_registers();
         }
         _delay_ms(CAN_TEST_PERIOD_MS);
+    }
+}
+
+static void draw_score(uint16_t score)
+{
+    oled_clear_line(GAME_SCORE_LINE);
+    fprintf_P(oled_output(), PSTR("SCORE %5u"), score);
+}
+
+/* The joystick drives the servo on node 2, which counts goals with the IR beam
+   and sends the score back. Shows WAITING until node 2's first score frame. */
+static void game(void)
+{
+    bool was_pressed = true;
+    bool has_score = false;
+    uint16_t shown = 0;
+
+    oled_clear();
+    oled_print("GAME");
+    oled_pos(GAME_SCORE_LINE, 0);
+    oled_print("SCORE WAITING");
+    oled_pos(EXIT_HINT_LINE, 0);
+    oled_print("CLICK TO EXIT");
+
+    while (!joystick_clicked(&was_pressed)) {
+        // A frame not sent here is retried next pass; node 2 centres the servo if they stop
+        send_joystick(read_joystick());
+
+        struct can_message message;
+        while (can_receive(&message)) {
+            if (message.id != SCORE_CAN_ID || message.length != SCORE_CAN_LENGTH) {
+                printf_P(PSTR("game: unexpected id %03X length %u\n"),
+                         message.id, message.length);
+                continue;
+            }
+            uint16_t score = message.data[0] | (uint16_t)message.data[1] << 8;
+            // Redraw only on change: clearing the line every frame flickers
+            if (!has_score || score != shown) {
+                has_score = true;
+                shown = score;
+                draw_score(score);
+            }
+        }
+        _delay_ms(GAME_PERIOD_MS);
     }
 }
 
@@ -266,6 +327,7 @@ int main(void) {
     while (1) {
         uint8_t action = menu_run(&main_menu, cal);
         switch (action) {
+            case ACTION_GAME:       game(); break;
             case ACTION_INPUT_VIEW: show_inputs(); break;
             case ACTION_LED_TEST:   led_test(); break;
             case ACTION_CAN_TEST:   can_test(); break;

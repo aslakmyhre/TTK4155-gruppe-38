@@ -72,8 +72,14 @@ void can_init(CanInit init, uint8_t rxInterrupt){
 
 
 void can_tx(CanMsg m){
-    while(!(CAN0->CAN_MB[txMailbox].CAN_MSR & CAN_MSR_MRDY)){}
-    
+    while(!can_try_tx(m)){}
+}
+
+uint8_t can_try_tx(CanMsg m){
+    if(!(CAN0->CAN_MB[txMailbox].CAN_MSR & CAN_MSR_MRDY)){
+        return 0;
+    }
+
     // Standard 11-bit ID (CAN 2.0A): node 1 drops extended frames
     CAN0->CAN_MB[txMailbox].CAN_MID = CAN_MID_MIDvA(m.id);
         
@@ -86,6 +92,7 @@ void can_tx(CanMsg m){
         
     // Set message length and mailbox ready to send
     CAN0->CAN_MB[txMailbox].CAN_MCR = (m.length << CAN_MCR_MDLC_Pos) | CAN_MCR_MTCR;
+    return 1;
 }
 
 uint8_t can_rx(CanMsg* m){
