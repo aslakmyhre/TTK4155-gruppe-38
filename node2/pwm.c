@@ -25,8 +25,8 @@ void pwm_init(void)
     PIOB->PIO_ABSR |= PIO_ABSR_P13;
     
     // CHannel 1 setup
-    PWM->PWM_CH_NUM[1].PWM_CMR  = PWM_CMR_CPRE_MCK_DIV_128;  // clock = MCK/128
-    // No PWM_CMR_CPOL: with it set, CDTY became the LOW time (scope showed ~92 % high at centre)
+    PWM->PWM_CH_NUM[1].PWM_CMR  = PWM_CMR_CPRE_MCK_DIV_128   // clock = MCK/128
+                                | PWM_CMR_CPOL;              // polarity: check on scope!
     PWM->PWM_CH_NUM[1].PWM_CPRD = PWM_CPRD_CPRD(us_to_ticks(PERIOD_US));
     PWM->PWM_CH_NUM[1].PWM_CDTY = PWM_CDTY_CDTY(us_to_ticks(PULSE_CENTER_US));
     

@@ -27,6 +27,11 @@ struct axis_calibration {
 // Needs oled_init() and a booted IO board. Index = ADC channel number.
 void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]);
 
+// Asks on the OLED whether to calibrate: a left-hand button runs
+// calibration_run(), a right-hand button fills cal with full-range defaults.
+// Same requirements as calibration_run().
+void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]);
+
 // Scales a raw reading to 0-255, clamping values beyond the calibrated extremes.
 uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw);
 

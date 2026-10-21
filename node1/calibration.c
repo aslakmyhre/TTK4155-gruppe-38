@@ -8,6 +8,8 @@
 #include <util/delay.h>
 
 #define BUTTON_POLL_MS 20
+#define DEFAULT_LOW     0
+#define DEFAULT_HIGH    CALIBRATION_MAX
 
 
 // Raw masks: any bit counts, since the bit-to-button mapping is unverified
@@ -16,12 +18,31 @@ static bool button_down(void) {
     return (buttons.right | buttons.left) != 0;
 }
 
-// Waits for a release first, so one long press can't confirm several steps
-static void wait_for_button(void) {
+static void wait_for_release(void) {
     while (button_down()) {
         _delay_ms(BUTTON_POLL_MS);
     }
+}
+
+// Waits for a release first, so one long press can't confirm several steps
+static void wait_for_button(void) {
+    wait_for_release();
     while (!button_down()) {
+        _delay_ms(BUTTON_POLL_MS);
+    }
+}
+
+// Returns true for a left-hand button, false for a right-hand one
+static bool wait_for_left_or_right(void) {
+    wait_for_release();
+    while (1) {
+        struct io_buttons buttons = io_board_buttons();
+        if (buttons.left) {
+            return true;
+        }
+        if (buttons.right) {
+            return false;
+        }
         _delay_ms(BUTTON_POLL_MS);
     }
 }
@@ -101,6 +122,28 @@ void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     }
     fprintf_P(out, PSTR("\nPRESS TO CONTINUE"));
     wait_for_button();
+}
+
+// Full ADC range with the rest position assumed at the midpoint. Wrong if an
+// axis is wired inverted or its rest position is far off 128.
+static void apply_defaults(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
+        cal[channel].low = DEFAULT_LOW;
+        cal[channel].center = CALIBRATION_ORIGO;
+        cal[channel].high = DEFAULT_HIGH;
+    }
+}
+
+void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    oled_clear();
+    fprintf_P(oled_output(), PSTR("CALIBRATE?\n\nLEFT BUTTON:  YES\nRIGHT BUTTON: SKIP"));
+    if (wait_for_left_or_right()) {
+        calibration_run(cal);
+        return;
+    }
+    apply_defaults(cal);
+    printf_P(PSTR("calibration: skipped, using defaults L%u C%u H%u\n"),
+             DEFAULT_LOW, CALIBRATION_ORIGO, DEFAULT_HIGH);
 }
 
 uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw) {

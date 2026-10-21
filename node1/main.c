@@ -261,7 +261,7 @@ int main(void) {
     _delay_ms(IO_BOARD_STARTUP_MS);
 
     play_splash();
-    calibration_run(cal);
+    calibration_ask(cal);
 
     while (1) {
         uint8_t action = menu_run(&main_menu, cal);
