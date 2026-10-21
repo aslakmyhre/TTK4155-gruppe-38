@@ -85,6 +85,11 @@ struct CanMsg {
 // receiving nodes has not cleared a buffer)
 void can_tx(CanMsg m);
 
+// Send a CAN message without blocking.
+// Returns 0 if the previous message is still waiting to be acknowledged
+// (e.g. no other node on the bus), 1 if this one was queued
+uint8_t can_try_tx(CanMsg m);
+
 // Receive a CAN message.
 // Does not block. Returns 0 if there is no message, 1 otherwise
 uint8_t can_rx(CanMsg* m);
