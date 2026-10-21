@@ -5,6 +5,7 @@
 #include "pwm.h"                           // PWM driver (servo on PB13)
 #include "servo.h"                         // Servo driver: percent -> pulse width
 #include "motor.h"                         // Motor driver: held off for now
+#include "ir.h"                            // IR beam: goal detection on the internal ADC
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
@@ -15,6 +16,12 @@
 #define JOYSTICK_CAN_LENGTH  2
 #define JOYSTICK_OFFSET      100
 #define JOYSTICK_TIMEOUT_MS  500           // no joystick frame for this long -> servo to centre
+
+// Score frame to node 1 (node1/main.c, game): id 0x020, length 2, score as uint16 little-endian.
+// Sent periodically, not just on a goal, so node 1 shows the score as soon as it opens GAME.
+#define SCORE_CAN_ID         0x020
+#define SCORE_CAN_LENGTH     2
+#define SCORE_SEND_PERIOD_MS 100
 
 /*
  * Remember to update the Makefile with the (relative) path to the uart.c file.
@@ -27,6 +34,7 @@
  */
 
 volatile uint32_t msTicks = 0;
+static uint32_t score = 0;                 // goals since start, read by the game later
 
 // SysTick interrupt, every 1 ms
 void SysTick_Handler(void) {
@@ -44,6 +52,28 @@ static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y)
     *x = (int8_t)((int16_t)m->byte[0] - JOYSTICK_OFFSET);
     *y = (int8_t)((int16_t)m->byte[1] - JOYSTICK_OFFSET);
     return 1;
+}
+
+// Lab 3.7.7 item 10: one point each time the ball breaks the IR beam.
+// ir_update() already filters noise and ignores bounces, so it reports each goal once.
+static void score_count(uint32_t now_ms)
+{
+    if (!ir_update(now_ms))
+        return;
+    score++;
+    printf("GOAL registered, score %lu\n\r", (unsigned long)score);
+}
+
+// Non-blocking: if node 1 is off the bus the last frame is never acknowledged,
+// and a blocking send would freeze the servo and joystick timeout with it.
+static void score_send(void)
+{
+    CanMsg m = {
+        .id = SCORE_CAN_ID,
+        .length = SCORE_CAN_LENGTH,
+        .byte = { (uint8_t)(score & 0xFF), (uint8_t)((score >> 8) & 0xFF) },
+    };
+    can_try_tx(m);
 }
 
 int main(void)
@@ -71,6 +101,9 @@ int main(void)
     servo_init();
     printf("PWM CPRD = %lu (expect 13125)\n\r", PWM->PWM_CH_NUM[1].PWM_CPRD);
 
+    if (ir_init() != 0)
+        printf("IR: ADC init failed, no conversion\n\r");
+
     // Must match node 1's MCP2515 CNF1-3 = 0x03, 0xAE, 0x01. Each field is TQ - 1:
     // TQ = 42 / 84 MHz = 0.5 us, sync 1 + prop 7 + phase1 6 + phase2 2 = 16 TQ = 125 kbit/s
     can_init((CanInit){
@@ -85,6 +118,7 @@ int main(void)
 
     CanMsg msg;
     uint32_t lastDebugPrint = msTicks;
+    uint32_t lastScoreSend = msTicks;
 
     // Joystick state (servo follows the y-axis, the lab says x-axis is for the motor)
     int8_t joy_x = 0;
@@ -111,6 +145,12 @@ int main(void)
             }
         }
 
+        score_count(msTicks);
+        if (msTicks - lastScoreSend >= SCORE_SEND_PERIOD_MS) {
+            lastScoreSend = msTicks;
+            score_send();
+        }
+
         // Safety: if node 1 stops sending (cable out, left the CAN TEST screen), go to centre
         if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {
             joystick_timed_out = 1;
@@ -122,9 +162,10 @@ int main(void)
         // CAN_SR bits 16-19: error active/warning/passive/bus off. CAN_ECR: REC bits 0-7, TEC bits 16-23
         if (msTicks - lastDebugPrint >= CAN_DEBUG_PERIOD_MS){
             lastDebugPrint = msTicks;
-            printf("CAN_SR %08lX CAN_ECR %08lX  joy x %4d y %4d  CDTY %lu\n\r",
+            printf("CAN_SR %08lX CAN_ECR %08lX  joy x %4d y %4d  CDTY %lu  IR raw %4u filt %4u %s\n\r",
                    (unsigned long)CAN0->CAN_SR, (unsigned long)CAN0->CAN_ECR,
-                   joy_x, joy_y, (unsigned long)PWM->PWM_CH_NUM[1].PWM_CDTY);
+                   joy_x, joy_y, (unsigned long)PWM->PWM_CH_NUM[1].PWM_CDTY,
+                   ir_raw(), ir_filtered(), ir_blocked() ? "blocked" : "clear");
         }
 
         // PWM test: step to the next test pulse every 2 s. Disabled: servo follows joystick
