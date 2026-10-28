@@ -6,6 +6,7 @@
 #include "servo.h"                         // Servo driver: percent -> pulse width
 #include "motor.h"                         // Motor driver: held off for now
 #include "ir.h"                            // IR beam: goal detection on the internal ADC
+#include "encoder.h"
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
@@ -87,7 +88,7 @@ int main(void)
     uart_init(SystemCoreClock, 115200);
     setvbuf(stdout, NULL, _IONBF, 0);
     printf("Node 2 started, MCK = %lu Hz\n\r", SystemCoreClock);  // should print 84000000
-
+    encoder_init();
     // Exercise 6.1: servo header signal pin (PB13) high.
     // Disabled: PB13 is now driven by the PWM module (Exercise 7)
     // PMC -> PMC_PCER0 = (1 << ID_PIOB);
@@ -167,7 +168,8 @@ int main(void)
                    joy_x, joy_y, (unsigned long)PWM->PWM_CH_NUM[1].PWM_CDTY,
                    ir_raw(), ir_filtered(), ir_blocked() ? "blocked" : "clear");
         }
-
+        printf("pos: %ld\n\r", (long)encoder_read());
+        for (volatile int i = 0; i < 1000000; i++);
         // PWM test: step to the next test pulse every 2 s. Disabled: servo follows joystick
         // if ((msTicks - lastStep) >= 2000) {
         //     lastStep = msTicks;
