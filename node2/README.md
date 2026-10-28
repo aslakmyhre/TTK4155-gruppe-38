@@ -1,3 +1,14 @@
+For making the arduino run on flash instead of rom:
+openocd -f sam/openocd.cfg -c init -c halt -c "at91sam3 gpnvm set 1" -c "reset run" -c shutdown
+
+
+pico:
+picocom -b 115200 /dev/ttyACM1
+
+double check port, ACM1 = top right on lab-pc front
+
+
+
 # TTK4155 Node 2
 
 Starter code for node 2 in TTK4155 Embedded and Industrial Computer Systems Design at NTNU. This repository contains two kinds of files:
