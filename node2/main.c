@@ -23,7 +23,7 @@
 #define CAL_STALL_MS 300
 #define CAL_TIMEOUT_MS 5000
 #define CAL_MOVE_COUNTS 5
-#define CAL_MIN_RANGE 1000
+#define CAL_MIN_RANGE 5000
 #define REF_MARGIN_PERCENT 5
 
 // Score frame to node 1 (node1/main.c, game): id 0x020, length 2, score as uint16 little-endian.
@@ -182,7 +182,7 @@ int main(void)
         if (can_rx(&msg)){
             if (joystick_decode(&msg, &joy_x, &joy_y)) {
                 servo_set_position(joy_y);
-                motor_set(joy_x);
+                motor_set_speed(joy_x);
                 lastJoystick = msTicks;
                 joystick_timed_out = 0;
             } else {

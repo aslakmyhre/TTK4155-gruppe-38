@@ -6,8 +6,8 @@
 
 #define MOTOR_PWM_CH    0           // PB12 is PWMH0
 #define MOTOR_PWM_CPRD  4200UL      // MCK / 4200 = 20 kHz, above hearing range
-#define MOTOR_MAX_PCT   100
-#define MOTOR_INVERT    0
+#define MOTOR_MAX_PCT   10
+#define MOTOR_INVERT    1
 
 void motor_init(void)
 {
