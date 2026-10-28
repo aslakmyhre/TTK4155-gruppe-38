@@ -14,7 +14,8 @@ SOURCE_FILES = \
 	servo.c \
 	motor.c \
 	ir.c \
-	encoder.c
+	encoder.c \
+	controller.c
 #	../path_to/uart.c \
 #   filename1.c \
 #   filename2.c \

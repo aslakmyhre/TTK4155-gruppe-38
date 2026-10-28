@@ -7,6 +7,7 @@
 #define MOTOR_PWM_CH    0           // PB12 is PWMH0
 #define MOTOR_PWM_CPRD  4200UL      // MCK / 4200 = 20 kHz, above hearing range
 #define MOTOR_MAX_PCT   100
+#define MOTOR_INVERT    0
 
 void motor_init(void)
 {
@@ -37,10 +38,14 @@ void motor_init(void)
     PIOB->PIO_PDR   = MOTOR_EN_MASK;
 }
 
-void motor_set(int8_t percent)
+void motor_set_speed(int8_t percent)
 {
     if (percent > MOTOR_MAX_PCT)  percent = MOTOR_MAX_PCT;
     if (percent < -MOTOR_MAX_PCT) percent = -MOTOR_MAX_PCT;
+
+#if MOTOR_INVERT
+    percent =-percent;
+#endif
 
     // Which DIR level is "right" depends on motor wiring: flip here if reversed
     if (percent < 0) {

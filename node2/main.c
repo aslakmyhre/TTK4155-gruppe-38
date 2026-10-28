@@ -7,6 +7,7 @@
 #include "motor.h"                         // Motor driver: joystick x -> PWM + DIR
 #include "ir.h"                            // IR beam: goal detection on the internal ADC
 #include "encoder.h"
+#include "controller.h"
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
@@ -17,6 +18,13 @@
 #define JOYSTICK_CAN_LENGTH  2
 #define JOYSTICK_OFFSET      100
 #define JOYSTICK_TIMEOUT_MS  500           // no joystick frame for this long -> servo to centre
+
+#define CAL_SPEED 30
+#define CAL_STALL_MS 300
+#define CAL_TIMEOUT_MS 5000
+#define CAL_MOVE_COUNTS 5
+#define CAL_MIN_RANGE 1000
+#define REF_MARGIN_PERCENT 5
 
 // Score frame to node 1 (node1/main.c, game): id 0x020, length 2, score as uint16 little-endian.
 // Sent periodically, not just on a goal, so node 1 shows the score as soon as it opens GAME.
@@ -55,6 +63,37 @@ static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y)
     return 1;
 }
 
+//drive motor until it stops (end point reached), return encoder position
+static int32_t drive_until_stall(int8_t speed)
+{
+    int32_t last = encoder_read();
+    uint32_t start = msTicks;
+    uint32_t lastMove = msTicks;
+
+    motor_set_speed(speed);
+    while ((msTicks - lastMove) < CAL_STALL_MS && (msTicks - start) < CAL_TIMEOUT_MS) {
+        int32_t now = -encoder_read();
+        if (now-last > CAL_MOVE_COUNTS || last-now > CAL_MOVE_COUNTS) {
+            last=now;
+            lastMove=msTicks;
+        }
+    }
+    motor_stop();
+    return encoder_read();
+}
+
+static int32_t calibrate(void) {
+    drive_until_stall(-CAL_SPEED);
+    encoder_reset();
+    int32_t pos_max =drive_until_stall(CAL_SPEED);
+    if (pos_max < CAL_MIN_RANGE) {
+        printf("motor calibration failed, pos_max = %ld (negative:flip MOTOR_INVERT)\n\r", (long)pos_max);
+        return 0;
+    }
+    printf("Calibration done, pos_max = %ld\n\r", (long)pos_max);
+    return pos_max;
+}
+
 // Lab 3.7.7 item 10: one point each time the ball breaks the IR beam.
 // ir_update() already filters noise and ignores bounces, so it reports each goal once.
 static void score_count(uint32_t now_ms)
@@ -88,7 +127,6 @@ int main(void)
     uart_init(SystemCoreClock, 115200);
     setvbuf(stdout, NULL, _IONBF, 0);
     printf("Node 2 started, MCK = %lu Hz\n\r", SystemCoreClock);  // should print 84000000
-    encoder_init();
     // Exercise 6.1: servo header signal pin (PB13) high.
     // Disabled: PB13 is now driven by the PWM module (Exercise 7)
     // PMC -> PMC_PCER0 = (1 << ID_PIOB);
@@ -116,6 +154,11 @@ int main(void)
         .smp = 0
     }, 0);
     printf("CAN_BR = 0x%08lX (expect 0x00290651)\n\r", (unsigned long)CAN0->CAN_BR);
+
+    encoder_init();
+    int32_t pos_max = calibrate();
+    controller_init(pos_max);
+
 
     CanMsg msg;
     uint32_t lastDebugPrint = msTicks;

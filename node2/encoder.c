@@ -15,3 +15,7 @@ void encoder_init(void) {
 int32_t encoder_read(void){
     return (int32_t)TC2->TC_CHANNEL[0].TC_CV;
 }
+
+void encoder_reset(void) {
+    TC2->TC_CHANNEL[0].TC_CCR = TC_CCR_SWTRG;
+}

@@ -12,7 +12,7 @@
 // as possible in main().
 
 void motor_init(void);            // DIR low, ENABLE driven by PWM at 0 % duty -> motor off
-void motor_set(int8_t percent);   // -100..100: sign -> DIR, magnitude -> duty cycle
+void motor_set_speed(int8_t percent);   // -100..100: sign -> DIR, magnitude -> duty cycle
 void motor_stop(void);            // duty cycle 0
 
 #endif
