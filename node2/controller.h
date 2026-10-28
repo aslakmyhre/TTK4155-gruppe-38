@@ -3,15 +3,13 @@
 
 #include <stdint.h>
 
-// PI position controller for the motor.
-// Reference and position are in encoder counts, the error is scaled to
-// percent of the track so the gains do not depend on the encoder resolution.
-// Output is motor speed in percent, -100..100 (motor_set_speed() scale).
+//PI position controller
+//ref and pos are in encoder counts, error scaled to % of track
+//output = motor speed % (-MOTOR_MAX_PCT, MOTOR_MAX_PCT)
 
-void controller_init(int32_t pos_max);      // pos_max = track length in counts
-void controller_reset(void);                // clear the integral
+void controller_init(int32_t pos_max);
+void controller_reset(void);
 
-// Call at a fixed rate, every CONTROLLER_PERIOD_MS
 #define CONTROLLER_PERIOD_MS 10
 int8_t controller_update(int32_t ref, int32_t pos);
 
