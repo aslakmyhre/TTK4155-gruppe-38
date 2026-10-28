@@ -6,7 +6,8 @@
 
 #define MOTOR_PWM_CH    0           // PB12 is PWMH0
 #define MOTOR_PWM_CPRD  4200UL      // MCK / 4200 = 20 kHz, above hearing range
-#define MOTOR_MAX_PCT   10
+#define MOTOR_FULL_PCT  100         // input scale: 100 % = full duty
+#define MOTOR_MAX_PCT   10          // limit, input above this is clamped
 #define MOTOR_INVERT    1
 
 void motor_init(void)
@@ -55,7 +56,7 @@ void motor_set_speed(int8_t percent)
         PIOC->PIO_SODR = MOTOR_DIR_MASK;
     }
 
-    uint32_t duty = (MOTOR_PWM_CPRD * (uint32_t)percent) / MOTOR_MAX_PCT;
+    uint32_t duty = (MOTOR_PWM_CPRD * (uint32_t)percent) / MOTOR_FULL_PCT;
     PWM->PWM_CH_NUM[MOTOR_PWM_CH].PWM_CDTYUPD = PWM_CDTYUPD_CDTYUPD(duty);
 }
 
