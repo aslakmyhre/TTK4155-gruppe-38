@@ -169,7 +169,7 @@ int main(void)
                    ir_raw(), ir_filtered(), ir_blocked() ? "blocked" : "clear");
         }
         printf("pos: %ld\n\r", (long)encoder_read());
-        for (volatile int i = 0; i < 1000000; i++);
+        //for (volatile int i = 0; i < 1000000; i++);
         // PWM test: step to the next test pulse every 2 s. Disabled: servo follows joystick
         // if ((msTicks - lastStep) >= 2000) {
         //     lastStep = msTicks;
