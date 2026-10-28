@@ -8,7 +8,7 @@
 #define IR_ADC_CHANNEL       7       // A0 (PA16)
 #define IR_BLOCKED_IS_LOW    1       // 1: less light -> lower voltage. 0 if the op-amp stage inverts
 #define IR_THRESHOLD_BLOCK   600    // filtered value must pass this to become blocked (0..4095)
-#define IR_THRESHOLD_CLEAR   1000    // and pass back over this to be clear again (hysteresis gap)
+#define IR_THRESHOLD_CLEAR   700    // and pass back over this to be clear again (hysteresis gap)
 #define IR_SAMPLE_PERIOD_MS  2
 #define IR_FILTER_SHIFT      3       // EMA weight 1/8; time constant ~ 2 ms * 8 = 16 ms
 #define IR_GOAL_HOLDOFF_MS   1000    // ignore new goals this long after one (ball bouncing in the beam)
