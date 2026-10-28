@@ -5,7 +5,7 @@
 
 //PI position controller
 //ref and pos are in encoder counts, error scaled to % of track
-//output = motor speed % (-100,100)
+//output = motor speed % (-MOTOR_MAX_PCT, MOTOR_MAX_PCT)
 
 void controller_init(int32_t pos_max);
 void controller_reset(void);

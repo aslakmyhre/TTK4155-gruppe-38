@@ -7,7 +7,6 @@
 #define MOTOR_PWM_CH    0           // PB12 is PWMH0
 #define MOTOR_PWM_CPRD  4200UL      // MCK / 4200 = 20 kHz, above hearing range
 #define MOTOR_FULL_PCT  100         // input scale: 100 % = full duty
-#define MOTOR_MAX_PCT   50          // limit, input above this is clamped
 #define MOTOR_INVERT    1
 
 void motor_init(void)

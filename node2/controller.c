@@ -1,9 +1,10 @@
 #include "controller.h"
+#include "motor.h"
 
 #define KP 2.0f
 #define KI 1.0f
 #define T (CONTROLLER_PERIOD_MS/1000.0f)
-#define U_MAX 100.0f
+#define U_MAX ((float)MOTOR_MAX_PCT)   // saturate where the motor does, or anti-windup never kicks in
 
 static float track_counts = 1.0f;
 static float integral = 0.0f;

@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define MOTOR_MAX_PCT   50   // speed limit, input above this is clamped
+
 // Motor driver (phase/enable) on the motor shield.
 //   ENABLE/PWM: PB12 (D20), PWM channel 0 (PWMH0), peripheral B
 //   PHASE/DIR:  PC23 (D7)

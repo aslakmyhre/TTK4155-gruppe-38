@@ -72,7 +72,7 @@ static int32_t drive_until_stall(int8_t speed)
 
     motor_set_speed(speed);
     while ((msTicks - lastMove) < CAL_STALL_MS && (msTicks - start) < CAL_TIMEOUT_MS) {
-        int32_t now = -encoder_read();
+        int32_t now = encoder_read();
         if (now-last > CAL_MOVE_COUNTS || last-now > CAL_MOVE_COUNTS) {
             last=now;
             lastMove=msTicks;
@@ -92,6 +92,14 @@ static int32_t calibrate(void) {
     }
     printf("Calibration done, pos_max = %ld\n\r", (long)pos_max);
     return pos_max;
+}
+
+// Joystick x -100..100 -> encoder target, kept REF_MARGIN_PERCENT away from each end stop
+static int32_t joystick_to_ref(int8_t x, int32_t pos_max)
+{
+    int32_t margin = pos_max * REF_MARGIN_PERCENT / 100;
+    int32_t span = pos_max - 2 * margin;
+    return margin + ((int32_t)x + JOYSTICK_OFFSET) * span / (2 * JOYSTICK_OFFSET);
 }
 
 // Lab 3.7.7 item 10: one point each time the ball breaks the IR beam.
@@ -163,6 +171,7 @@ int main(void)
     CanMsg msg;
     uint32_t lastDebugPrint = msTicks;
     uint32_t lastScoreSend = msTicks;
+    uint32_t lastControl = msTicks;
 
     // Joystick state (servo follows the y-axis, the lab says x-axis is for the motor)
     int8_t joy_x = 0;
@@ -182,7 +191,6 @@ int main(void)
         if (can_rx(&msg)){
             if (joystick_decode(&msg, &joy_x, &joy_y)) {
                 servo_set_position(joy_y);
-                motor_set_speed(joy_x);
                 lastJoystick = msTicks;
                 joystick_timed_out = 0;
             } else {
@@ -201,7 +209,16 @@ int main(void)
             joystick_timed_out = 1;
             servo_set_position(0);
             motor_stop();
+            controller_reset();
             printf("Joystick timeout, servo to centre, motor stopped\n\r");
+        }
+
+        // Lab 3.8.4 item 4/5: closed-loop position control, joystick x sets the target.
+        // No control without a valid calibration (pos_max 0) or a live joystick: motor stays off.
+        if (pos_max > 0 && !joystick_timed_out && (msTicks - lastControl) >= CONTROLLER_PERIOD_MS) {
+            lastControl = msTicks;
+            int32_t ref = joystick_to_ref(joy_x, pos_max);
+            motor_set_speed(controller_update(ref, encoder_read()));
         }
 
         // Bus debugging without blocking: one mailbox, so a delay here would drop frames.
