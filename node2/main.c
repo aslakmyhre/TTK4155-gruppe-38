@@ -4,7 +4,7 @@
 #include "can.h"
 #include "pwm.h"                           // PWM driver (servo on PB13)
 #include "servo.h"                         // Servo driver: percent -> pulse width
-#include "motor.h"                         // Motor driver: held off for now
+#include "motor.h"                         // Motor driver: joystick x -> PWM + DIR
 #include "ir.h"                            // IR beam: goal detection on the internal ADC
 #include "encoder.h"
 
@@ -139,6 +139,7 @@ int main(void)
         if (can_rx(&msg)){
             if (joystick_decode(&msg, &joy_x, &joy_y)) {
                 servo_set_position(joy_y);
+                motor_set(joy_x);
                 lastJoystick = msTicks;
                 joystick_timed_out = 0;
             } else {
@@ -156,7 +157,8 @@ int main(void)
         if (!joystick_timed_out && (msTicks - lastJoystick) >= JOYSTICK_TIMEOUT_MS) {
             joystick_timed_out = 1;
             servo_set_position(0);
-            printf("Joystick timeout, servo to centre\n\r");
+            motor_stop();
+            printf("Joystick timeout, servo to centre, motor stopped\n\r");
         }
 
         // Bus debugging without blocking: one mailbox, so a delay here would drop frames.
