@@ -12,6 +12,8 @@
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
+#define PI_DEBUG_PERIOD_MS 200             // UART blocks ~7 ms per line, so faster starves the 10 ms control loop
+#define PI_DEBUG_SCALE 10                  // PI values printed in tenths, integers only like the other debug prints
 
 // Joystick frame from node 1 (node1/main.c, send_joystick):
 //   id 0x010, length 3, byte[0] = x + 100, byte[1] = y + 100  (x, y in -100..100 percent)
@@ -129,6 +131,22 @@ static void score_send(void)
     can_try_tx(m);
 }
 
+// PI values only while the controller runs: when idle they would be stale.
+// Motor values always, so a motor that moves while it should be off shows up.
+static void pi_debug_print(int control_active)
+{
+    if (control_active) {
+        ControllerState s = controller_state();
+        printf("PI ref %ld pos %ld e*10 %ld P*10 %ld I*10 %ld u*10 %ld  ",
+               (long)s.ref, (long)s.pos,
+               (long)(s.e * PI_DEBUG_SCALE), (long)(s.p * PI_DEBUG_SCALE),
+               (long)(s.i * PI_DEBUG_SCALE), (long)(s.u * PI_DEBUG_SCALE));
+    } else {
+        printf("PI off  ");
+    }
+    printf("motor dir %d duty %lu\n\r", motor_dir(), (unsigned long)motor_duty());
+}
+
 int main(void)
 {
     SystemInit();                          // 84 MHz core clock
@@ -178,6 +196,7 @@ int main(void)
     uint32_t lastDebugPrint = msTicks;
     uint32_t lastScoreSend = msTicks;
     uint32_t lastControl = msTicks;
+    uint32_t lastPiDebug = msTicks;
 
     // Joystick state (servo follows the y-axis, the lab says x-axis is for the motor)
     int8_t joy_x = 0;
@@ -227,10 +246,16 @@ int main(void)
 
         // Lab 3.8.4 item 4/5: closed-loop position control, joystick x sets the target.
         // No control without a valid calibration (pos_max 0) or a live joystick: motor stays off.
-        if (pos_max > 0 && !joystick_timed_out && (msTicks - lastControl) >= CONTROLLER_PERIOD_MS) {
+        int control_active = pos_max > 0 && !joystick_timed_out;
+        if (control_active && (msTicks - lastControl) >= CONTROLLER_PERIOD_MS) {
             lastControl = msTicks;
             int32_t ref = joystick_to_ref(joy_x, pos_max);
             motor_set_speed(controller_update(ref, encoder_read()));
+        }
+
+        if (msTicks - lastPiDebug >= PI_DEBUG_PERIOD_MS) {
+            lastPiDebug = msTicks;
+            pi_debug_print(control_active);
         }
 
         // Bus debugging without blocking: one mailbox, so a delay here would drop frames.

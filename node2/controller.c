@@ -8,6 +8,7 @@
 
 static float track_counts = 1.0f;
 static float integral = 0.0f;
+static ControllerState state = {0};
 
 void controller_init(int32_t pos_max) {
     if (pos_max>0)
@@ -17,11 +18,18 @@ void controller_init(int32_t pos_max) {
 
 void controller_reset(void){
     integral = 0.0f;
+    state = (ControllerState){0};
+}
+
+ControllerState controller_state(void){
+    return state;
 }
 
 int8_t controller_update(int32_t ref, int32_t pos) {
     float e = (float)(ref-pos)*100.0f/track_counts;
-    float u = KP*e+KI*integral;
+    float p = KP*e;
+    float i = KI*integral;
+    float u = p+i;
 
     //anti windup
     if (u>U_MAX)
@@ -30,6 +38,8 @@ int8_t controller_update(int32_t ref, int32_t pos) {
         u=-U_MAX;
     else 
         integral+=e*T;
+
+    state = (ControllerState){ .ref = ref, .pos = pos, .e = e, .p = p, .i = i, .u = u };
 
     return (int8_t)u;
 }

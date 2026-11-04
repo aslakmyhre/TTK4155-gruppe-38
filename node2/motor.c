@@ -63,3 +63,13 @@ void motor_stop(void)
 {
     PWM->PWM_CH_NUM[MOTOR_PWM_CH].PWM_CDTYUPD = PWM_CDTYUPD_CDTYUPD(0);
 }
+
+uint32_t motor_duty(void)
+{
+    return PWM->PWM_CH_NUM[MOTOR_PWM_CH].PWM_CDTY;
+}
+
+int motor_dir(void)
+{
+    return (PIOC->PIO_ODSR & MOTOR_DIR_MASK) != 0;
+}
