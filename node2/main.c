@@ -8,14 +8,18 @@
 #include "ir.h"                            // IR beam: goal detection on the internal ADC
 #include "encoder.h"
 #include "controller.h"
+#include "solenoid.h"                      // Solenoid: short pulse on PB25 to hit the ball
 
 #define PB13_MASK (1u << 13)               // servo header signal pin (now owned by PWM driver)
 #define CAN_DEBUG_PERIOD_MS 500
+#define PI_DEBUG_PERIOD_MS 200             // UART blocks ~7 ms per line, so faster starves the 10 ms control loop
+#define PI_DEBUG_SCALE 10                  // PI values printed in tenths, integers only like the other debug prints
 
-// Joystick frame from node 1 (node1/main.c, can_test):
-//   id 0x010, length 2, byte[0] = x + 100, byte[1] = y + 100  (x, y in -100..100 percent)
+// Joystick frame from node 1 (node1/main.c, send_joystick):
+//   id 0x010, length 3, byte[0] = x + 100, byte[1] = y + 100  (x, y in -100..100 percent)
+//   byte[2] = fire button, 1 while pressed
 #define JOYSTICK_CAN_ID      0x010
-#define JOYSTICK_CAN_LENGTH  2
+#define JOYSTICK_CAN_LENGTH  3
 #define JOYSTICK_OFFSET      100
 #define JOYSTICK_TIMEOUT_MS  500           // no joystick frame for this long -> servo to centre
 
@@ -50,16 +54,19 @@ void SysTick_Handler(void) {
     msTicks++;
 }
 
-// Decodes a joystick frame into x and y percent. Returns 0 if the frame is not
-// a valid joystick frame, so garbage on the bus can never move the servo.
-static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y)
+// Decodes a joystick frame into x and y percent and the fire button. Returns 0 if
+// the frame is not a valid joystick frame, so garbage on the bus can never move anything.
+static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y, uint8_t *fire)
 {
     if (m->id != JOYSTICK_CAN_ID || m->length != JOYSTICK_CAN_LENGTH)
         return 0;
     if (m->byte[0] > 2 * JOYSTICK_OFFSET || m->byte[1] > 2 * JOYSTICK_OFFSET)
         return 0;                          // outside 0..200, not a valid position
+    if (m->byte[2] > 1)
+        return 0;                          // button is 0 or 1
     *x = (int8_t)((int16_t)m->byte[0] - JOYSTICK_OFFSET);
     *y = (int8_t)((int16_t)m->byte[1] - JOYSTICK_OFFSET);
+    *fire = m->byte[2];
     return 1;
 }
 
@@ -124,10 +131,27 @@ static void score_send(void)
     can_try_tx(m);
 }
 
+// PI values only while the controller runs: when idle they would be stale.
+// Motor values always, so a motor that moves while it should be off shows up.
+static void pi_debug_print(int control_active)
+{
+    if (control_active) {
+        ControllerState s = controller_state();
+        printf("PI ref %ld pos %ld e*10 %ld P*10 %ld I*10 %ld u*10 %ld  ",
+               (long)s.ref, (long)s.pos,
+               (long)(s.e * PI_DEBUG_SCALE), (long)(s.p * PI_DEBUG_SCALE),
+               (long)(s.i * PI_DEBUG_SCALE), (long)(s.u * PI_DEBUG_SCALE));
+    } else {
+        printf("PI off  ");
+    }
+    printf("motor dir %d duty %lu\n\r", motor_dir(), (unsigned long)motor_duty());
+}
+
 int main(void)
 {
     SystemInit();                          // 84 MHz core clock
     motor_init();                          // FIRST: stop the motor (ENABLE pin floats high after reset)
+    solenoid_init();                       // and keep the solenoid from firing
     WDT->WDT_MR = WDT_MR_WDDIS;            // disable watchdog
     SysTick_Config(SystemCoreClock / 1000);
 
@@ -172,10 +196,13 @@ int main(void)
     uint32_t lastDebugPrint = msTicks;
     uint32_t lastScoreSend = msTicks;
     uint32_t lastControl = msTicks;
+    uint32_t lastPiDebug = msTicks;
 
     // Joystick state (servo follows the y-axis, the lab says x-axis is for the motor)
     int8_t joy_x = 0;
     int8_t joy_y = 0;
+    uint8_t joy_fire = 0;
+    uint8_t joy_fire_prev = 0;             // fire only on press, not while held
     uint32_t lastJoystick = msTicks;
     int joystick_timed_out = 1;            // centre until the first frame arrives
 
@@ -189,8 +216,11 @@ int main(void)
     {
         // Read every CAN frame; joystick frames move the servo
         if (can_rx(&msg)){
-            if (joystick_decode(&msg, &joy_x, &joy_y)) {
+            if (joystick_decode(&msg, &joy_x, &joy_y, &joy_fire)) {
                 servo_set_position(joy_y);
+                if (joy_fire && !joy_fire_prev)
+                    solenoid_fire(msTicks);
+                joy_fire_prev = joy_fire;
                 lastJoystick = msTicks;
                 joystick_timed_out = 0;
             } else {
@@ -198,6 +228,7 @@ int main(void)
             }
         }
 
+        solenoid_update(msTicks);           // ends the pulse after SOLENOID_PULSE_MS
         score_count(msTicks);
         if (msTicks - lastScoreSend >= SCORE_SEND_PERIOD_MS) {
             lastScoreSend = msTicks;
@@ -215,10 +246,16 @@ int main(void)
 
         // Lab 3.8.4 item 4/5: closed-loop position control, joystick x sets the target.
         // No control without a valid calibration (pos_max 0) or a live joystick: motor stays off.
-        if (pos_max > 0 && !joystick_timed_out && (msTicks - lastControl) >= CONTROLLER_PERIOD_MS) {
+        int control_active = pos_max > 0 && !joystick_timed_out;
+        if (control_active && (msTicks - lastControl) >= CONTROLLER_PERIOD_MS) {
             lastControl = msTicks;
             int32_t ref = joystick_to_ref(joy_x, pos_max);
             motor_set_speed(controller_update(ref, encoder_read()));
+        }
+
+        if (msTicks - lastPiDebug >= PI_DEBUG_PERIOD_MS) {
+            lastPiDebug = msTicks;
+            pi_debug_print(control_active);
         }
 
         // Bus debugging without blocking: one mailbox, so a delay here would drop frames.

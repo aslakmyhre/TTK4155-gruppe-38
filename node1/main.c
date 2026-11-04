@@ -28,8 +28,8 @@
 #define SPLASH_STEP_MS      15    /* pause per pixel row, sets the reveal speed */
 #define SPLASH_HOLD_MS      500   /* finished image stays up before the menu */
 #define CAN_TEST_PERIOD_MS  50
-#define CAN_TEST_ID         0x010 /* joystick position: x, y in percent */
-#define CAN_TEST_LENGTH     2
+#define CAN_TEST_ID         0x010 /* joystick position: x, y in percent, fire button */
+#define CAN_TEST_LENGTH     3
 #define CAN_TEST_COUNT_LINE 6
 #define CAN_DEBUG_EVERY     20    /* passes per register dump, ~1 s: one line takes ~60 ms at 9600 baud */
 #define SENT_BOX_X          12    /* 40 px boxes centered in each half */
@@ -179,14 +179,15 @@ static struct joystick_position read_joystick(void)
         calibration_apply(&cal[JOYSTICK_Y_CHANNEL], raw[JOYSTICK_Y_CHANNEL]));
 }
 
-/* Node 2 moves the servo from this frame. False if the previous frame has not
-   been acknowledged yet (e.g. node 2 is off the bus). */
-static bool send_joystick(struct joystick_position pos)
+/* Node 2 moves the servo and motor from this frame and fires the solenoid on
+   a press. False if the previous frame has not been acknowledged yet (e.g. node 2
+   is off the bus). */
+static bool send_joystick(struct joystick_position pos, bool fire)
 {
     struct can_message message = {
         .id = CAN_TEST_ID,
         .length = CAN_TEST_LENGTH,
-        .data = { (uint8_t)pos.x+100, (uint8_t)pos.y+100 },
+        .data = { (uint8_t)pos.x+100, (uint8_t)pos.y+100, fire ? 1 : 0 },
     };
     return can_send(&message);
 }
@@ -215,7 +216,7 @@ static void can_test(void)
 
     while (!joystick_clicked(&was_pressed)) {
         struct joystick_position pos = read_joystick();
-        if (send_joystick(pos))
+        if (send_joystick(pos, false))
             sent++;
         joystick_box_show(&sent_box, pos);
 
@@ -268,7 +269,9 @@ static void game(void)
 
     while (!joystick_clicked(&was_pressed)) {
         // A frame not sent here is retried next pass; node 2 centres the servo if they stop
-        send_joystick(read_joystick());
+        // Any right-hand IO-board button fires; the joystick click is used to exit
+        bool fire = io_board_buttons().right != 0;
+        send_joystick(read_joystick(), fire);
 
         struct can_message message;
         while (can_receive(&message)) {

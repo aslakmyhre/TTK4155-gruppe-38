@@ -15,7 +15,8 @@ SOURCE_FILES = \
 	motor.c \
 	ir.c \
 	encoder.c \
-	controller.c
+	controller.c \
+	solenoid.c
 #	../path_to/uart.c \
 #   filename1.c \
 #   filename2.c \
