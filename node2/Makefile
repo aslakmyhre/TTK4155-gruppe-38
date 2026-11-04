@@ -13,7 +13,10 @@ SOURCE_FILES = \
 	pwm.c \
 	servo.c \
 	motor.c \
-	ir.c
+	ir.c \
+	encoder.c \
+	controller.c \
+	solenoid.c
 #	../path_to/uart.c \
 #   filename1.c \
 #   filename2.c \
