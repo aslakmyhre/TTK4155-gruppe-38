@@ -1,10 +1,17 @@
 #include "uart.h"
 #include <stdio.h>
-
 #include <avr/io.h>
 
+<<<<<<< HEAD
+/*
+* AVR's standard library expect this specific argument signature.
+*/
+=======
 //putchar for stdio, sends one char over UART
+>>>>>>> main
 static int uart_putchar(char c, FILE *stream) {
+    /* since we always write to same UART we dont need to configure this
+        to make sure the compiler doesnt complain */
     (void)stream;
     if (c == '\n') {
         uart_transmit('\r'); // terminals expect CRLF
@@ -14,20 +21,44 @@ static int uart_putchar(char c, FILE *stream) {
     return 0;
 }
 
+<<<<<<< HEAD
+/*
+* Same as in uart_puchar, FDEV expect this signature
+*/
+=======
 //getchar for stdio, waits for one char from UART
+>>>>>>> main
 static int uart_getchar(FILE *stream) {
+    /* as noted earlier we always write to the same UART 
+        so we just make compiler not complain */
     (void)stream;
     return uart_receive();
 }
 
-// Static instead of fdevopen(), which would link in malloc
+
+/*
+* AVR's library macro for settitn up an in- and output stream.
+* FDEV_SETUP_STREAM saves the function pointers needed for where to send/receive UART.
+*
+* Static instead of fdevopen(), which would link in malloc
+*/
 static FILE uart_stream = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
+
+/*
+* Setup UART0. Takes ubrr (USART baud-rate register value) as an argument
+* To calculate UBRR: f_osc/(16*BAUD)-1 
+*/
 void uart_init(uint16_t ubrr) {
     //declares baudrate registers
     UBRR0H = (uint8_t)(ubrr >> 8);
     UBRR0L = (uint8_t)ubrr;
+<<<<<<< HEAD
+
+    // enable Rx and Tx on USART0
+=======
     //enable RX and TX
+>>>>>>> main
     UCSR0B = (1 << RXEN0) | (1 << TXEN0);
 
     // 8 data bits, no parity, 1 stop bit. UBRR0H and UCSR0C share IO address, URSEL0=1 selects UCSR0C.
@@ -39,14 +70,22 @@ void uart_init(uint16_t ubrr) {
 
 //send one byte
 void uart_transmit(unsigned char data) {
+<<<<<<< HEAD
+    // check USART0 control and status register A's data-empty register
+=======
     //wait until transmit buffer is empty
+>>>>>>> main
     while (!(UCSR0A & (1 << UDRE0))) {}
-    UDR0 = data;
+    UDR0 = data; // USART0 I/O data register
 }
 
 //receive one byte
 unsigned char uart_receive(void) {
+<<<<<<< HEAD
+    // check if USART0's I/O register has new data
+=======
     //wait until a byte has arrived
+>>>>>>> main
     while (!(UCSR0A & (1 << RXC0))) {}
-    return UDR0;
+    return UDR0; // get Rx
 }
