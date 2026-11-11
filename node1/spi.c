@@ -54,9 +54,11 @@ void spi_init(void)
     SPSR = 0;
 }
 
+//send one byte over SPI, return byte recieved
 uint8_t spi_transfer(uint8_t value)
 {
     SPDR = value;
+    //wait until 8 bits have been sent
     while (!(SPSR & _BV(SPIF))) {}
     return SPDR;
 }

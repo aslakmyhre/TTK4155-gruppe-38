@@ -78,16 +78,19 @@ void mcp2515_reset(void)
     _delay_us(RESET_WAIT_US);
 }
 
+//Read registers from MCP2515
 void mcp2515_read_array(uint8_t address, uint8_t *data, uint8_t count)
 {
     begin(INSTRUCTION_READ);
     (void)spi_transfer(address);
+    //read registers, increase address by 1 for each byte
     for (uint8_t i = 0; i < count; ++i) {
         data[i] = spi_transfer(0x00); //send dummy, recieve register value
     }
     spi_deselect_all();
 }
 
+//Read single MCP2515 register
 uint8_t mcp2515_read(uint8_t address)
 {
     uint8_t value;
@@ -229,9 +232,13 @@ bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length)
     return false;
 }
 
-/* For bus debugging. CANSTAT top bits: mode. TXB0CTRL 0x08: send pending,
-   0x10: transmit error. TEC >= 128 with EFLG 0x10: sending but nobody
-   acknowledges. */
+/*Prints MCP registers to UART for debugging. 
+CANSTAT             TXB0CTRL,               TEC,                        REC,                    EFLG
+0x80 = config       0x08=send pending       transmit error. counter     receive error counter   error flags
+0x00 = normal       0x10=transmit error
+0x40 = loopback
+0x20 = sleep
+*/
 void mcp2515_print_registers(void)
 {
     printf_P(PSTR("CANSTAT %02X TXB0CTRL %02X TEC %u REC %u EFLG %02X\n"),
