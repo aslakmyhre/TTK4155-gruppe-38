@@ -34,6 +34,7 @@ static int      goal_seen;         // holdoff only applies after the first goal
 static uint32_t last_goal_ms;
 static uint32_t last_sample_ms;
 
+//returns last converted value from the ADC channel
 static uint16_t adc_read(void)
 {
     return (uint16_t)(ADC->ADC_CDR[IR_ADC_CHANNEL] & ADC_CDR_DATA_Msk);
@@ -41,6 +42,7 @@ static uint16_t adc_read(void)
 
 int ir_init(void)
 {
+    //enable clock for ADC
     PMC->PMC_PCER1 = (1u << (ID_ADC - 32));
 
     // Free run: the ADC converts continuously, so reading is just a register load.
@@ -50,11 +52,13 @@ int ir_init(void)
     ADC->ADC_CHER = IR_CHANNEL_MASK;
     ADC->ADC_CR   = ADC_CR_START;
 
+    //wait for first conversion, give up after timeout
     uint32_t loops = 0;
     while (!(ADC->ADC_ISR & IR_CHANNEL_MASK))
         if (++loops >= IR_INIT_TIMEOUT_LOOPS)
             return -1;
 
+    //start filter at first sample
     raw = adc_read();
     filter_acc = (uint32_t)raw << IR_FILTER_SHIFT;
     // Start as blocked so a goal needs the beam to be seen clear first:
@@ -64,6 +68,7 @@ int ir_init(void)
     return 0;
 }
 
+//true if value is on blocked side of threshold
 static int past_block_threshold(uint16_t v)
 {
 #if IR_BLOCKED_IS_LOW
@@ -73,6 +78,7 @@ static int past_block_threshold(uint16_t v)
 #endif
 }
 
+//true if value is on clear side of threshold
 static int past_clear_threshold(uint16_t v)
 {
 #if IR_BLOCKED_IS_LOW
@@ -82,24 +88,30 @@ static int past_clear_threshold(uint16_t v)
 #endif
 }
 
+//sample and filter IR signal, returns 1 once for each goal
 int ir_update(uint32_t now_ms)
 {
+    //only sample every IR_SAMPLE_PERIOD_MS
     if (now_ms - last_sample_ms < IR_SAMPLE_PERIOD_MS)
         return 0;
     last_sample_ms = now_ms;
 
+    //new sample through low-pass filter
     raw = adc_read();
     filter_acc += raw - (filter_acc >> IR_FILTER_SHIFT);
     uint16_t f = ir_filtered();
 
+    //beam is blocked, wait until it is clear again
     if (blocked) {
         if (past_clear_threshold(f))
             blocked = 0;
         return 0;
     }
+    //beam is clear, nothing to do until it gets blocked
     if (!past_block_threshold(f))
         return 0;
 
+    //beam just got blocked: goal, unless one was counted recently
     blocked = 1;
     if (goal_seen && now_ms - last_goal_ms < IR_GOAL_HOLDOFF_MS)
         return 0;
@@ -108,6 +120,7 @@ int ir_update(uint32_t now_ms)
     return 1;
 }
 
+//getters, used for debug print
 int      ir_blocked(void)     { return blocked; }
 uint16_t ir_raw(void)         { return raw; }
 uint16_t ir_filtered(void)    { return (uint16_t)(filter_acc >> IR_FILTER_SHIFT); }

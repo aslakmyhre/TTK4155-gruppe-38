@@ -4,8 +4,8 @@
 
 
 void xmem_init(void) {
-    // Masking PC4-PC7 out of the address bus leaves them to JTAG, so the
-    // Atmel-ICE can stay connected and debugging keeps working.
+    //Disable PC4:PC7, whos pins are used by jtag
     SFIOR |= (1 << XMM2);
+    //SRAM enable
     MCUCR |= (1 << SRE);
 }

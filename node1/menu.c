@@ -14,6 +14,7 @@
 #define MENU_FIRST_ITEM_LINE 1
 #define MENU_VISIBLE_ITEMS   (OLED_LINES - MENU_FIRST_ITEM_LINE)
 
+//what the user did since last poll
 enum menu_event {
     EVENT_NONE,
     EVENT_UP,
@@ -23,17 +24,20 @@ enum menu_event {
     EVENT_CLICK,
 };
 
+//joystick direction and button at one poll
 struct menu_input {
     enum joystick_direction direction;
     bool pressed;
 };
 
+//one open menu and its selected item
 struct menu_level {
     const struct menu *menu;
     uint8_t selected;
 };
 
 
+//read joystick direction and button
 static struct menu_input read_input(const struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     uint8_t raw[ADC_NUM_CHANNELS];
     adc_read(raw);
@@ -71,12 +75,14 @@ static uint8_t first_visible(uint8_t selected) {
     return selected < MENU_VISIBLE_ITEMS ? 0 : selected - MENU_VISIBLE_ITEMS + 1;
 }
 
+//draw one item, "> " marks the selected one
 static void draw_item(const struct menu *menu, uint8_t index, uint8_t top, bool selected) {
     oled_clear_line(MENU_FIRST_ITEM_LINE + index - top);
     oled_print(selected ? "> " : "  ");
     oled_print(menu->items[index].label);
 }
 
+//draw title and visible items
 static void draw_menu(const struct menu *menu, uint8_t selected) {
     uint8_t top = first_visible(selected);
     oled_clear_line(MENU_TITLE_LINE);
@@ -86,6 +92,7 @@ static void draw_menu(const struct menu *menu, uint8_t selected) {
         if (index < menu->count) {
             draw_item(menu, index, top, index == selected);
         } else {
+            //no item here, clear line
             oled_clear_line(MENU_FIRST_ITEM_LINE + line);
         }
     }
@@ -97,6 +104,7 @@ static void move_selection(struct menu_level *level, uint8_t next) {
     uint8_t previous = level->selected;
     uint8_t top = first_visible(next);
     level->selected = next;
+    //list has to scroll, redraw whole menu
     if (top != first_visible(previous)) {
         draw_menu(level->menu, next);
         return;
@@ -105,8 +113,10 @@ static void move_selection(struct menu_level *level, uint8_t next) {
     draw_item(level->menu, next, top, true);
 }
 
+//menu loop, returns action of chosen item
 uint8_t menu_run(const struct menu *root,
                  const struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    //path holds open menus from root to current
     struct menu_level path[MENU_MAX_DEPTH] = {{ .menu = root, .selected = 0 }};
     uint8_t depth = 0;
     draw_menu(root, 0);
@@ -114,6 +124,7 @@ uint8_t menu_run(const struct menu *root,
 
     while (1) {
         _delay_ms(MENU_POLL_MS);
+        //poll input, compare with last poll to find event
         struct menu_input now = read_input(cal);
         enum menu_event event = to_event(now, before);
         before = now;
@@ -123,18 +134,22 @@ uint8_t menu_run(const struct menu *root,
         const struct menu_item *item = &level->menu->items[level->selected];
 
         switch (event) {
+            //move up, wrap to last item
             case EVENT_UP:
                 move_selection(level, level->selected == 0 ? count - 1 : level->selected - 1);
                 break;
+            //move down, wrap to first item
             case EVENT_DOWN:
                 move_selection(level, (level->selected + 1) % count);
                 break;
+            //go back to parent menu
             case EVENT_BACK:
                 if (depth > 0) {
                     depth--;
                     draw_menu(path[depth].menu, path[depth].selected);
                 }
                 break;
+            //leaf: return action on click. submenu: open it
             case EVENT_OPEN:
             case EVENT_CLICK:
                 if (item->submenu == NULL) {

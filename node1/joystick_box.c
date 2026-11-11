@@ -22,6 +22,7 @@ static uint8_t dot_offset(int16_t percent)
     return (uint8_t)(1 + (percent + PERCENT_MAX) * DOT_TRAVEL / (2 * PERCENT_MAX));
 }
 
+//true if pixel is part of border, center mark or dot
 static bool is_lit(const struct joystick_box *box, uint8_t col, uint8_t row)
 {
     bool border = col == 0 || col == BORDER_LAST || row == 0 || row == BORDER_LAST;
@@ -31,10 +32,12 @@ static bool is_lit(const struct joystick_box *box, uint8_t col, uint8_t row)
     return border || center || dot;
 }
 
+//build one page (8 pixel rows) of the box and draw it on OLED
 static void draw_page(const struct joystick_box *box, uint8_t page)
 {
     uint8_t columns[JOYSTICK_BOX_SIZE];
     for (uint8_t col = 0; col < JOYSTICK_BOX_SIZE; col++) {
+        //one byte is one column of 8 pixels
         uint8_t byte = 0;
         for (uint8_t bit = 0; bit < PAGE_HEIGHT; bit++) {
             if (is_lit(box, col, page * PAGE_HEIGHT + bit))
@@ -45,6 +48,7 @@ static void draw_page(const struct joystick_box *box, uint8_t page)
     oled_draw_columns(box->x, JOYSTICK_BOX_FIRST_PAGE + page, columns, JOYSTICK_BOX_SIZE);
 }
 
+//draw empty box with dot in center
 void joystick_box_init(struct joystick_box *box, uint8_t x)
 {
     box->x = x;
@@ -54,16 +58,19 @@ void joystick_box_init(struct joystick_box *box, uint8_t x)
         draw_page(box, page);
 }
 
+//move dot to new joystick position
 void joystick_box_show(struct joystick_box *box, struct joystick_position pos)
 {
     uint8_t old_y = box->dot_y;
     uint8_t new_x = dot_offset(pos.x);
     uint8_t new_y = dot_offset(-pos.y);   /* up is positive, screen rows grow down */
+    //dot has not moved, skip redraw
     if (new_x == box->dot_x && new_y == old_y)
         return;
     box->dot_x = new_x;
     box->dot_y = new_y;
 
+    //redraw only pages covered by old or new dot
     uint8_t top = old_y < new_y ? old_y : new_y;
     uint8_t bottom = (old_y > new_y ? old_y : new_y) + DOT_SIZE - 1;
     for (uint8_t page = top / PAGE_HEIGHT; page <= bottom / PAGE_HEIGHT; page++)

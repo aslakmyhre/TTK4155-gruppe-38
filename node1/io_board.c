@@ -10,6 +10,7 @@ static void begin(uint8_t command)
 {
     spi_select(SPI_SLAVE_IO);
     (void)spi_transfer(command);
+    //wait before data bytes, IO-board needs time to handle the command
     _delay_us(40);
 }
 
@@ -19,8 +20,10 @@ static void read_command(uint8_t command, uint8_t *data, uint8_t count)
     begin(command);
     for (uint8_t i = 0; i < count; ++i) {
         if (i != 0) {
+            //short wait between bytes
             _delay_us(2);
         }
+        //send dummy, receive data byte
         data[i] = spi_transfer(0x00);
     }
     spi_deselect_all();
@@ -29,6 +32,7 @@ static void read_command(uint8_t command, uint8_t *data, uint8_t count)
 /* Decide LED and index of LED */
 static void write_led(uint8_t command, uint8_t led, uint8_t value)
 {
+    //ignore invalid LED index
     if (led >= IO_BOARD_LED_COUNT) {
         return;
     }
@@ -87,10 +91,12 @@ void io_board_info(struct io_info *info)
 {
     uint8_t data[35];
     read_command(IO_BOARD_INFO, data, sizeof data);
+    //first 19 bytes are timestamp text
     for (uint8_t i = 0; i < 19; ++i) {
         info->timestamp[i] = (char)data[i];
     }
     info->timestamp[19] = '\0';
+    //remaining bytes are serial number
     for (uint8_t i = 0; i < sizeof info->serial; ++i) {
         info->serial[i] = data[19 + i];
     }

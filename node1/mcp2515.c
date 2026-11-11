@@ -44,27 +44,36 @@
 //wait for crystal to stabilize
 #define RESET_WAIT_US 100
 
+//set by ISR when MCP2515 pulls INT low
 static volatile bool interrupt_flag;
 
+//runs on falling edge on INT pin
 ISR(INT0_vect)
 {
     interrupt_flag = true;
 }
 
+//Enable interrupt from MCP2515
 static void int0_init(void)
-{
-    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN); //PD2=input
-    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01)); //trigger on falling edge
-    GIFR = _BV(INTF0); //clear old trigger
-    GICR |= _BV(INT0); //enable INT0
+{   
+    //PD2=input
+    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN);
+    //trigger on falling edge
+    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01));
+    //clear old trigger
+    GIFR = _BV(INTF0);
+    //enable INT0 
+    GICR |= _BV(INT0);
 }
 
+//Select MCP2515, send instruction byte
 static void begin(uint8_t instruction)
 {
     spi_select(SPI_SLAVE_CAN);
     (void)spi_transfer(instruction);
 }
 
+//Reset MCP2515, set to configuration mode
 void mcp2515_reset(void)
 {
     begin(INSTRUCTION_RESET);
@@ -72,16 +81,19 @@ void mcp2515_reset(void)
     _delay_us(RESET_WAIT_US);
 }
 
+//Read registers from MCP2515
 void mcp2515_read_array(uint8_t address, uint8_t *data, uint8_t count)
 {
     begin(INSTRUCTION_READ);
     (void)spi_transfer(address);
+    //read registers, increase address by 1 for each byte
     for (uint8_t i = 0; i < count; ++i) {
         data[i] = spi_transfer(0x00); //send dummy, recieve register value
     }
     spi_deselect_all();
 }
 
+//Read single MCP2515 register
 uint8_t mcp2515_read(uint8_t address)
 {
     uint8_t value;
@@ -89,6 +101,7 @@ uint8_t mcp2515_read(uint8_t address)
     return value;
 }
 
+//Write registers to MCP2515
 void mcp2515_write_array(uint8_t address, const uint8_t *data, uint8_t count)
 {
     begin(INSTRUCTION_WRITE);
@@ -97,11 +110,13 @@ void mcp2515_write_array(uint8_t address, const uint8_t *data, uint8_t count)
     spi_deselect_all();
 }
 
+//Write single MCP2515 register
 void mcp2515_write(uint8_t address, uint8_t value)
 {
     mcp2515_write_array(address, &value, 1);
 }
 
+//Start transmission from selected transmit buffers
 bool mcp2515_request_to_send(uint8_t buffers)
 {
     // Stray high bits would turn this into a different instruction
@@ -113,6 +128,7 @@ bool mcp2515_request_to_send(uint8_t buffers)
     return true;
 }
 
+//Read status byte with RX and TX flags
 uint8_t mcp2515_read_status(void)
 {
     begin(INSTRUCTION_READ_STATUS);
@@ -121,6 +137,7 @@ uint8_t mcp2515_read_status(void)
     return status;
 }
 
+//Change only the bits selected by mask in a register
 void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data)
 {
     const uint8_t bytes[] = {address, mask, data};
@@ -129,10 +146,13 @@ void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data)
     spi_deselect_all();
 }
 
+//Configures MCP2515 recieve settings
 static void receive_init(void)
 {
-    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT); //0x64 - accept all + rollover
-    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY); //0x60 accept all
+    //accept all messages, rollover from RXB0 to RXB1, enable interrupts on both buffers
+    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT);
+    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY);
+    //Pull INT low when message arrives
     mcp2515_write(MCP2515_CANINTE, MCP2515_INT_RX0 | MCP2515_INT_RX1);
 }
 
@@ -140,16 +160,23 @@ bool mcp2515_init(void)
 {
     mcp2515_reset();
     int0_init();
+
+
+    // Check if the MCP2515 is in configuration mode, else SPI communication fails
     if ((mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) != MCP2515_MODE_CONFIG) {
         return false;
     }
+    // Set up receive buffers and enable interrupt on received message
     receive_init();
     return true;
 }
 
+//Set operating mode, returns false if mode does not change in time
 bool mcp2515_set_mode(uint8_t mode)
 {
+    //request new mode
     mcp2515_bit_modify(MCP2515_CANCTRL, MCP2515_MODE_MASK, mode);
+    //wait until CANSTAT shows new mode
     for (uint8_t ms = 0; ms < MODE_SWITCH_TIMEOUT_MS; ms++) {
         if ((mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) == mode) {
             return true;
@@ -159,31 +186,39 @@ bool mcp2515_set_mode(uint8_t mode)
     return false;
 }
 
+//Send CAN message from TXB0, returns false if previous message is not sent yet
 bool mcp2515_transmit(uint16_t id, const uint8_t *data, uint8_t length)
 {
+    //TXB0 is still busy
     if (mcp2515_read_status() & MCP2515_STATUS_TX0REQ) {
         return false;
     }
+    //11 bit id is split over SIDH and SIDL, DLC is data length
     const uint8_t header[FRAME_HEADER_LENGTH] = {
         [HEADER_SIDH] = (uint8_t)(id >> SIDH_SHIFT),
         [HEADER_SIDL] = (uint8_t)((id & SIDL_ID_MASK) << SIDL_SHIFT),
         [HEADER_DLC]  = length,
     };
+    //load header and data into TXB0
     begin(INSTRUCTION_LOAD_TX_BUFFER);
     spi_write(header, sizeof header);
     spi_write(data, length);
     spi_deselect_all();
+    //start transmission
     return mcp2515_request_to_send(MCP2515_TXB0);
 }
 
 /* Raising CS at the end of READ RX BUFFER clears the buffer's RXnIF */
+//Read one message from receive buffer 0 or 1, returns false if frame type is not supported
 static bool read_rx_buffer(uint8_t buffer, uint16_t *id, uint8_t *data, uint8_t *length)
 {
+    //read header with id and length
     uint8_t header[FRAME_HEADER_LENGTH];
     begin(INSTRUCTION_READ_RX_BUFFER | (uint8_t)(buffer << READ_RX_BUFFER_SHIFT));
     for (uint8_t i = 0; i < FRAME_HEADER_LENGTH; ++i) {
         header[i] = spi_transfer(0x00);
     }
+    //drop extended and remote frames
     if (header[HEADER_SIDL] & (SIDL_IDE | SIDL_SRR)) {
         spi_deselect_all();
         return false;
@@ -191,21 +226,25 @@ static bool read_rx_buffer(uint8_t buffer, uint16_t *id, uint8_t *data, uint8_t 
     uint8_t dlc = header[HEADER_DLC] & DLC_MASK;
     /* CAN 2.0B: a DLC of 9-15 still carries 8 data bytes */
     *length = dlc > MCP2515_MAX_DATA_LENGTH ? MCP2515_MAX_DATA_LENGTH : dlc;
+    //read data bytes
     for (uint8_t i = 0; i < *length; ++i) {
         data[i] = spi_transfer(0x00);
     }
     spi_deselect_all();
+    //put id together from SIDH and SIDL
     *id = (uint16_t)((uint16_t)header[HEADER_SIDH] << SIDH_SHIFT
                      | header[HEADER_SIDL] >> SIDL_SHIFT);
     return true;
 }
 
+//Get received message from RXB0 or RXB1, returns false if none
 bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length)
 {
     /* The INT pin says whether anything arrived without an SPI transfer */
     if (!mcp2515_interrupt_pending()) {
         return false;
     }
+    //check which buffer has a message
     uint8_t status = mcp2515_read_status();
     if (status & MCP2515_STATUS_RX0IF) {
         return read_rx_buffer(0, id, data, length);
@@ -216,9 +255,13 @@ bool mcp2515_receive(uint16_t *id, uint8_t *data, uint8_t *length)
     return false;
 }
 
-/* For bus debugging. CANSTAT top bits: mode. TXB0CTRL 0x08: send pending,
-   0x10: transmit error. TEC >= 128 with EFLG 0x10: sending but nobody
-   acknowledges. */
+/*Prints MCP registers to UART for debugging. 
+CANSTAT             TXB0CTRL,               TEC,                        REC,                    EFLG
+0x80 = config       0x08=send pending       transmit error. counter     receive error counter   error flags
+0x00 = normal       0x10=transmit error
+0x40 = loopback
+0x20 = sleep
+*/
 void mcp2515_print_registers(void)
 {
     printf_P(PSTR("CANSTAT %02X TXB0CTRL %02X TEC %u REC %u EFLG %02X\n"),
@@ -226,13 +269,16 @@ void mcp2515_print_registers(void)
              mcp2515_read(TEC), mcp2515_read(REC), mcp2515_read(EFLG));
 }
 
+//Returns true if MCP2515 has a message waiting
 bool mcp2515_interrupt_pending(void)
 {
     bool edge_seen;
+    //read and clear flag with interrupts off
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         edge_seen = interrupt_flag;
         interrupt_flag = false; //clear flag
     }
+    //INT stays low as long as a message is waiting
     bool pin_low = !(PIND & _BV(MCP2515_INT_PIN));
     return edge_seen || pin_low;
 }

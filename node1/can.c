@@ -17,6 +17,7 @@ _Static_assert(CAN_MAX_DATA_LENGTH == MCP2515_MAX_DATA_LENGTH,
 #define CNF2_VALUE 0xAE /* BTLMODE (phase2 from CNF3), 1 sample, PHSEG1 5, PRSEG 6 */
 #define CNF3_VALUE 0x01 /* PHSEG2 1 */
 
+//set up MCP2515 with bit timing for 125 kbit/s, then set normal mode
 bool can_init(void)
 {
     /* Leaves the controller in configuration mode, the only mode where CNF1-3 can be written */
@@ -24,6 +25,7 @@ bool can_init(void)
         return false;
     }
 
+    //write bit timing registers
     mcp2515_write(CNF1, CNF1_VALUE);
     mcp2515_write(CNF2, CNF2_VALUE);
     mcp2515_write(CNF3, CNF3_VALUE);
@@ -33,17 +35,21 @@ bool can_init(void)
         return false;
     }
 
+    //normal mode, ready to send and receive
     return mcp2515_set_mode(MCP2515_MODE_NORMAL);
 }
 
+//send one CAN message, returns false if message is invalid or controller is busy
 bool can_send(const struct can_message *message)
 {
+    //check id and length
     if (message->id > CAN_MAX_STANDARD_ID || message->length > CAN_MAX_DATA_LENGTH) {
         return false;
     }
     return mcp2515_transmit(message->id, message->data, message->length);
 }
 
+//get one received CAN message, returns false if none has arrived
 bool can_receive(struct can_message *message)
 {
     return mcp2515_receive(&message->id, message->data, &message->length);

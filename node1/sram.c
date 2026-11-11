@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
+//lab handout
 void sram_test(void) {
     volatile char *ext_ram = (char *) SRAM_BASE;
     uint16_t ext_ram_size = SRAM_SIZE;

@@ -11,6 +11,7 @@
 
 void motor_init(void)
 {
+    //enable clock for PIOB, PIOC and PWM
     PMC->PMC_PCER0 = (1u << ID_PIOB) | (1u << ID_PIOC);
     PMC->PMC_PCER1 = (1u << (ID_PWM - 32));
 
@@ -38,8 +39,10 @@ void motor_init(void)
     PIOB->PIO_PDR   = MOTOR_EN_MASK;
 }
 
+//set motor speed in %, sign decides direction
 void motor_set_speed(int8_t percent)
 {
+    //clamp to speed limit
     if (percent > MOTOR_MAX_PCT)  percent = MOTOR_MAX_PCT;
     if (percent < -MOTOR_MAX_PCT) percent = -MOTOR_MAX_PCT;
 
@@ -55,20 +58,24 @@ void motor_set_speed(int8_t percent)
         PIOC->PIO_SODR = MOTOR_DIR_MASK;
     }
 
+    //convert % to PWM duty
     uint32_t duty = (MOTOR_PWM_CPRD * (uint32_t)percent) / MOTOR_FULL_PCT;
     PWM->PWM_CH_NUM[MOTOR_PWM_CH].PWM_CDTYUPD = PWM_CDTYUPD_CDTYUPD(duty);
 }
 
+//stop motor, duty 0
 void motor_stop(void)
 {
     PWM->PWM_CH_NUM[MOTOR_PWM_CH].PWM_CDTYUPD = PWM_CDTYUPD_CDTYUPD(0);
 }
 
+//returns current duty in PWM counts
 uint32_t motor_duty(void)
 {
     return PWM->PWM_CH_NUM[MOTOR_PWM_CH].PWM_CDTY;
 }
 
+//returns level on DIR pin
 int motor_dir(void)
 {
     return (PIOC->PIO_ODSR & MOTOR_DIR_MASK) != 0;

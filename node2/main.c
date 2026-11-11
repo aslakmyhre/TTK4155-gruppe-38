@@ -64,6 +64,7 @@ static int joystick_decode(const CanMsg *m, int8_t *x, int8_t *y, uint8_t *fire)
         return 0;                          // outside 0..200, not a valid position
     if (m->byte[2] > 1)
         return 0;                          // button is 0 or 1
+    //remove offset, back to -100..100
     *x = (int8_t)((int16_t)m->byte[0] - JOYSTICK_OFFSET);
     *y = (int8_t)((int16_t)m->byte[1] - JOYSTICK_OFFSET);
     *fire = m->byte[2];
@@ -78,8 +79,10 @@ static int32_t drive_until_stall(int8_t speed)
     uint32_t lastMove = msTicks;
 
     motor_set_speed(speed);
+    //drive until encoder has not moved for CAL_STALL_MS, or timeout
     while ((msTicks - lastMove) < CAL_STALL_MS && (msTicks - start) < CAL_TIMEOUT_MS) {
         int32_t now = encoder_read();
+        //encoder moved, motor is still driving
         if (now-last > CAL_MOVE_COUNTS || last-now > CAL_MOVE_COUNTS) {
             last=now;
             lastMove=msTicks;
@@ -89,10 +92,12 @@ static int32_t drive_until_stall(int8_t speed)
     return encoder_read();
 }
 
+//find track length: drive to one end, reset encoder, drive to other end
 static int32_t calibrate(void) {
     drive_until_stall(-CAL_SPEED);
     encoder_reset();
     int32_t pos_max =drive_until_stall(CAL_SPEED);
+    //range too short, calibration failed
     if (pos_max < CAL_MIN_RANGE) {
         printf("motor calibration failed, pos_max = %ld (negative:flip MOTOR_INVERT)\n\r", (long)pos_max);
         return 0;
@@ -123,6 +128,7 @@ static void score_count(uint32_t now_ms)
 // and a blocking send would freeze the servo and joystick timeout with it.
 static void score_send(void)
 {
+    //score as two bytes, low byte first
     CanMsg m = {
         .id = SCORE_CAN_ID,
         .length = SCORE_CAN_LENGTH,
@@ -187,12 +193,14 @@ int main(void)
     }, 0);
     printf("CAN_BR = 0x%08lX (expect 0x00290651)\n\r", (unsigned long)CAN0->CAN_BR);
 
+    //find track length before starting controller
     encoder_init();
     int32_t pos_max = calibrate();
     controller_init(pos_max);
 
 
     CanMsg msg;
+    //timestamps for periodic tasks
     uint32_t lastDebugPrint = msTicks;
     uint32_t lastScoreSend = msTicks;
     uint32_t lastControl = msTicks;
@@ -230,6 +238,7 @@ int main(void)
 
         solenoid_update(msTicks);           // ends the pulse after SOLENOID_PULSE_MS
         score_count(msTicks);
+        //send score to node 1 every SCORE_SEND_PERIOD_MS
         if (msTicks - lastScoreSend >= SCORE_SEND_PERIOD_MS) {
             lastScoreSend = msTicks;
             score_send();
@@ -253,6 +262,7 @@ int main(void)
             motor_set_speed(controller_update(ref, encoder_read()));
         }
 
+        //print PI and motor values
         if (msTicks - lastPiDebug >= PI_DEBUG_PERIOD_MS) {
             lastPiDebug = msTicks;
             pi_debug_print(control_active);
