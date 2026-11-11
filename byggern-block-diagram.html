@@ -1,0 +1,813 @@
+<title>Byggern Block Diagram</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one wide column; each figure is a drawing sheet that scrolls sideways on its own when the pane is narrow. */
+:root {
+  --bg: #EEF1F4; --fig: #FBFCFD; --ink: #17212B; --muted: #5A6978; --line: #C9D2DB; --edge: #7F8D9B;
+  --blk: #F1F4F7; --hw: #E4E9EE;
+  --n1: #1B5FA6; --n1-fill: #E3EEF9; --n2: #A8501A; --n2-fill: #FAEBDD; --can: #A01F6E;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F151B; --fig: #151C24; --ink: #E4EAF0; --muted: #94A2B1; --line: #2C3946; --edge: #6C7A89;
+    --blk: #1B242E; --hw: #232E3A;
+    --n1: #7DB7F2; --n1-fill: #16293D; --n2: #F0A570; --n2-fill: #33241A; --can: #F07AB6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F151B; --fig: #151C24; --ink: #E4EAF0; --muted: #94A2B1; --line: #2C3946; --edge: #6C7A89;
+  --blk: #1B242E; --hw: #232E3A;
+  --n1: #7DB7F2; --n1-fill: #16293D; --n2: #F0A570; --n2-fill: #33241A; --can: #F07AB6;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+.page { max-width: 1420px; margin: 0 auto; padding-block: 36px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 36px; }
+header { display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.15; font-weight: 600; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+h2 { font-size: 19px; font-weight: 600; margin: 0; text-wrap: balance; }
+h2 .n { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--muted); margin-right: 10px; letter-spacing: .04em; }
+p { margin: 0; }
+.lede { max-width: 72ch; color: var(--ink); }
+.lede b { font-weight: 600; }
+code { font-family: var(--mono); font-size: .92em; }
+section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sheet { background: var(--fig); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; padding: 10px; }
+.sheet svg { display: block; width: 100%; min-width: 1140px; height: auto; }
+figcaption { max-width: 86ch; color: var(--muted); font-size: 14px; }
+figcaption b { color: var(--ink); font-weight: 600; }
+.hint { display: none; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+@media (max-width: 1190px) { .hint { display: block; } }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 8px 28px; padding: 0; margin: 0; list-style: none; font-size: 13.5px; }
+.legend li { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.legend svg { flex: none; width: 64px; height: 20px; }
+.legend span { min-width: 0; }
+.notes { max-width: 80ch; padding-left: 20px; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+
+/* drawing */
+svg text { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
+.t-title { font-weight: 600; font-size: 12px; }
+.t-note, .h-det { font-family: var(--sans); font-size: 10px; fill: var(--muted); }
+.t-fn.st { fill: var(--muted); }
+.t-fn.per { fill: var(--acc); }
+.t-hdr { font-family: var(--sans); font-size: 8.5px; font-weight: 600; letter-spacing: .09em; fill: var(--muted); }
+.tag { font-size: 8.5px; font-weight: 600; fill: var(--acc); letter-spacing: .03em; }
+.t-lab { font-size: 10px; }
+.canlab { fill: var(--can); font-weight: 600; }
+.h-title { font-family: var(--sans); font-size: 11.5px; font-weight: 600; }
+.h-fn { font-size: 10px; }
+.blk { fill: var(--blk); stroke: var(--edge); stroke-width: 1; }
+.blk.app { fill: var(--acc-fill); stroke: var(--acc); stroke-width: 1.4; }
+.blk.hw { fill: var(--hw); stroke: var(--edge); stroke-dasharray: 5 3; }
+.blk.vendor { fill: var(--hw); }
+.blk.ghost { fill: none; stroke: var(--muted); stroke-dasharray: 1.5 3.5; }
+.w { fill: none; stroke: var(--ink); stroke-width: 1.2; }
+.w.sig { stroke-dasharray: 5 3.5; }
+.w.can { stroke: var(--can); stroke-width: 2.4; }
+.halo { fill: none; stroke: var(--fig); stroke-width: 7; }
+.ah { fill: var(--ink); } .ah-can { fill: var(--can); }
+.dot { fill: var(--ink); } .dot-can { fill: var(--can); }
+.pill rect { fill: none; stroke: var(--muted); stroke-width: .9; }
+.pill text { font-size: 8.5px; fill: var(--muted); }
+.fig-n1, .lg-n1 { --acc: var(--n1); --acc-fill: var(--n1-fill); }
+.fig-n2 { --acc: var(--n2); --acc-fill: var(--n2-fill); }
+.fb { stroke-width: 1.2; }
+.fb.n1 { fill: var(--n1-fill); stroke: var(--n1); }
+.fb.n2 { fill: var(--n2-fill); stroke: var(--n2); }
+.node { fill: var(--blk); stroke: var(--line); }
+.f-title { font-family: var(--sans); font-size: 11.5px; font-weight: 600; }
+.f-det { font-size: 9px; fill: var(--muted); }
+.f-lab { font-size: 9.5px; }
+.f-node { font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.n1t { fill: var(--n1); } .n2t { fill: var(--n2); }
+.f-nsub { font-family: var(--sans); font-size: 11px; fill: var(--muted); }
+.f-bus { font-family: var(--sans); font-size: 11.5px; font-weight: 700; fill: var(--can); }
+.f-busd { font-family: var(--sans); font-size: 10px; fill: var(--muted); }
+.f-frame { font-size: 10px; font-weight: 600; fill: var(--can); }
+</style>
+<div class="page">
+<header>
+  <p class="eyebrow">TTK4155 &#xB7; Group 38 &#xB7; branch main</p>
+  <h1>Block diagram of the two-node ping-pong system</h1>
+  <p class="lede">Two microcontrollers share one CAN bus. Node 1 reads the controls and draws the menu;
+  node 2 moves the motor, servo and solenoid and counts goals. Figure 1 shows what the system does.
+  Figures 2 and 3 place all <b>170 functions</b> of the two firmware images in their source files
+  (109 on node 1, 61 on node 2) and show which file calls which.</p>
+</header>
+
+<section>
+  <h2><span class="n">FIG 1</span>What the system does</h2>
+  <figure>
+    <div class="sheet"><svg viewBox="0 0 1360 484" role="img" aria-label="Functional block diagram: node 1 samples and calibrates the controls, draws the menu and sends the joystick over CAN; node 2 drives servo, motor and solenoid, detects goals and returns the score." class="fig-ov"><defs><marker id="ov-a" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah"/></marker><marker id="ov-c" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah-can"/></marker></defs><rect x="142" y="36" width="480" height="428" rx="8" class="node"/>
+<text x="156" y="57" class="f-node n1t">NODE 1</text>
+<text x="212" y="57" class="f-nsub">ATmega162 &#xB7; controls and display</text>
+<rect x="742" y="36" width="480" height="428" rx="8" class="node"/>
+<text x="756" y="57" class="f-node n2t">NODE 2</text>
+<text x="812" y="57" class="f-nsub">SAM3X8E (Arduino Due) &#xB7; game board</text>
+<text x="682" y="50" class="f-bus" text-anchor="middle">CAN bus</text>
+<text x="682" y="64" class="f-busd" text-anchor="middle">125 kbit/s</text>
+<path d="M682 76 L682 284" class="w can"/>
+<path d="M608 259 L682 259" class="w can"/>
+<path d="M682 99 L756 99" class="w can"/>
+<circle cx="682" cy="259" r="3.6" class="dot-can"/><circle cx="682" cy="99" r="3.6" class="dot-can"/>
+<text x="682" y="318" class="f-frame" text-anchor="middle">0x010  node 1 &#x2192; 2</text>
+<text x="682" y="332" class="f-busd" text-anchor="middle">joystick x, y, fire</text>
+<text x="682" y="345" class="f-busd" text-anchor="middle">3 bytes &#xB7; every 50 ms</text>
+<text x="682" y="378" class="f-frame" text-anchor="middle">0x020  node 2 &#x2192; 1</text>
+<text x="682" y="392" class="f-busd" text-anchor="middle">score, uint16 LE</text>
+<text x="682" y="405" class="f-busd" text-anchor="middle">2 bytes &#xB7; every 100 ms</text>
+<rect x="12" y="70" width="110" height="58" rx="4" class="blk hw"/>
+<text x="20" y="94" class="f-title">Joystick + pad</text>
+<text x="20" y="110" class="f-det">analog X/Y</text>
+<rect x="12" y="230" width="110" height="58" rx="4" class="blk hw"/>
+<text x="20" y="254" class="f-title">IO board</text>
+<text x="20" y="270" class="f-det">buttons, click</text>
+<rect x="12" y="390" width="110" height="58" rx="4" class="blk hw"/>
+<text x="20" y="414" class="f-title">OLED</text>
+<text x="20" y="430" class="f-det">128&#xD7;64 SSD1309</text>
+<rect x="156" y="70" width="124" height="58" rx="4" class="fb n1"/>
+<text x="164" y="89" class="f-title">Sample inputs</text>
+<text x="164" y="105" class="f-det">adc.c &#xB7; io_board.c</text>
+<text x="164" y="117" class="f-det">MAX156 + SPI</text>
+<rect x="320" y="70" width="124" height="58" rx="4" class="fb n1"/>
+<text x="328" y="89" class="f-title">Calibrate + scale</text>
+<text x="328" y="105" class="f-det">calibration.c</text>
+<text x="328" y="117" class="f-det">joystick.c, EEPROM</text>
+<rect x="484" y="70" width="124" height="58" rx="4" class="fb n1"/>
+<text x="492" y="89" class="f-title">Debug console</text>
+<text x="492" y="105" class="f-det">uart.c &#xB7; 9600 baud</text>
+<text x="492" y="117" class="f-det">plot_adc.py on PC</text>
+<rect x="320" y="230" width="124" height="58" rx="4" class="fb n1"/>
+<text x="328" y="249" class="f-title">Menu + screens</text>
+<text x="328" y="265" class="f-det">menu.c &#xB7; main.c</text>
+<text x="328" y="277" class="f-det">game, tests, setup</text>
+<rect x="484" y="230" width="124" height="58" rx="4" class="fb n1"/>
+<text x="492" y="249" class="f-title">CAN link</text>
+<text x="492" y="265" class="f-det">can.c &#xB7; mcp2515.c</text>
+<text x="492" y="277" class="f-det">SPI + INT0</text>
+<rect x="156" y="390" width="124" height="58" rx="4" class="fb n1"/>
+<text x="164" y="409" class="f-title">Display</text>
+<text x="164" y="425" class="f-det">oled.c</text>
+<text x="164" y="437" class="f-det">joystick_box.c</text>
+<rect x="484" y="390" width="124" height="58" rx="4" class="fb n1"/>
+<text x="492" y="409" class="f-title">Boot self-test</text>
+<text x="492" y="425" class="f-det">sram.c &#xB7; xmem.c</text>
+<text x="492" y="437" class="f-det">external SRAM</text>
+<path d="M122 99 L156 99" class="w sig" marker-end="url(#ov-a)"/>
+<path d="M280 99 L320 99" class="w " marker-end="url(#ov-a)"/>
+<text x="300" y="93" class="f-lab" text-anchor="middle">raw</text>
+<path d="M444 99 L484 99" class="w " marker-end="url(#ov-a)"/>
+<text x="464" y="93" class="f-lab" text-anchor="middle">logs</text>
+<path d="M382.0 128 L382.0 230" class="w " marker-end="url(#ov-a)"/>
+<text x="388.0" y="183" class="f-lab">&#xB1;100 %</text>
+<path d="M122 259 L218 259 L218 128" class="w sig" marker-end="url(#ov-a)"/>
+<text x="170" y="253" class="f-lab" text-anchor="middle">SPI</text>
+<path d="M444 248 L484 248" class="w " marker-end="url(#ov-a)"/>
+<text x="464" y="242" class="f-lab" text-anchor="middle">0x010</text>
+<path d="M484 270 L444 270" class="w " marker-end="url(#ov-a)"/>
+<text x="464" y="284" class="f-lab" text-anchor="middle">0x020</text>
+<path d="M382.0 288 L382.0 419 L280 419" class="w " marker-end="url(#ov-a)"/>
+<text x="388.0" y="350" class="f-lab">text, pixels</text>
+<path d="M156 419 L122 419" class="w sig" marker-end="url(#ov-a)"/>
+<rect x="756" y="70" width="124" height="58" rx="4" class="fb n2"/>
+<text x="764" y="89" class="f-title">CAN link</text>
+<text x="764" y="105" class="f-det">can.c &#xB7; CAN0</text>
+<text x="764" y="117" class="f-det">mailbox TX + RX</text>
+<rect x="756" y="310" width="124" height="58" rx="4" class="fb n2"/>
+<text x="764" y="329" class="f-title">Debug console</text>
+<text x="764" y="345" class="f-det">uart.c &#xB7; 115200</text>
+<text x="764" y="357" class="f-det">PI, CAN, IR logs</text>
+<rect x="920" y="70" width="124" height="58" rx="4" class="fb n2"/>
+<text x="928" y="89" class="f-title">Decode + validate</text>
+<text x="928" y="105" class="f-det">joystick_decode</text>
+<text x="928" y="117" class="f-det">500 ms timeout</text>
+<rect x="920" y="230" width="124" height="58" rx="4" class="fb n2"/>
+<text x="928" y="249" class="f-title">PI position loop</text>
+<text x="928" y="265" class="f-det">controller.c, 10 ms</text>
+<text x="928" y="277" class="f-det">Kp 2 &#xB7; Ki 1 &#xB7; &#xB1;50 %</text>
+<rect x="920" y="310" width="124" height="58" rx="4" class="fb n2"/>
+<text x="928" y="329" class="f-title">Track calibration</text>
+<text x="928" y="345" class="f-det">main.c: calibrate</text>
+<text x="928" y="357" class="f-det">runs once at boot</text>
+<rect x="920" y="390" width="124" height="58" rx="4" class="fb n2"/>
+<text x="928" y="409" class="f-title">Score counter</text>
+<text x="928" y="425" class="f-det">main.c: score_count</text>
+<text x="928" y="437" class="f-det">score_send</text>
+<rect x="1084" y="70" width="124" height="58" rx="4" class="fb n2"/>
+<text x="1092" y="89" class="f-title">Servo position</text>
+<text x="1092" y="105" class="f-det">servo.c &#xB7; pwm.c</text>
+<text x="1092" y="117" class="f-det">0.9&#x2013;2.1 ms @ 50 Hz</text>
+<rect x="1084" y="150" width="124" height="58" rx="4" class="fb n2"/>
+<text x="1092" y="169" class="f-title">Solenoid pulse</text>
+<text x="1092" y="185" class="f-det">solenoid.c</text>
+<text x="1092" y="197" class="f-det">50 ms, 300 ms rest</text>
+<rect x="1084" y="230" width="124" height="58" rx="4" class="fb n2"/>
+<text x="1092" y="249" class="f-title">Motor drive</text>
+<text x="1092" y="265" class="f-det">motor.c</text>
+<text x="1092" y="277" class="f-det">20 kHz PWM + DIR</text>
+<rect x="1084" y="310" width="124" height="58" rx="4" class="fb n2"/>
+<text x="1092" y="329" class="f-title">Encoder count</text>
+<text x="1092" y="345" class="f-det">encoder.c</text>
+<text x="1092" y="357" class="f-det">TC2 quadrature</text>
+<rect x="1084" y="390" width="124" height="58" rx="4" class="fb n2"/>
+<text x="1092" y="409" class="f-title">Goal detection</text>
+<text x="1092" y="425" class="f-det">ir.c &#xB7; ADC 12-bit</text>
+<text x="1092" y="437" class="f-det">filter + hysteresis</text>
+<rect x="1242" y="70" width="106" height="58" rx="4" class="blk hw"/>
+<text x="1250" y="94" class="f-title">Servo</text>
+<text x="1250" y="110" class="f-det">PB13</text>
+<rect x="1242" y="150" width="106" height="58" rx="4" class="blk hw"/>
+<text x="1250" y="174" class="f-title">Solenoid</text>
+<text x="1250" y="190" class="f-det">PB25</text>
+<rect x="1242" y="230" width="106" height="58" rx="4" class="blk hw"/>
+<text x="1250" y="254" class="f-title">DC motor</text>
+<text x="1250" y="270" class="f-det">PB12 &#xB7; PC23</text>
+<rect x="1242" y="310" width="106" height="58" rx="4" class="blk hw"/>
+<text x="1250" y="334" class="f-title">Encoder</text>
+<text x="1250" y="350" class="f-det">PC25 &#xB7; PC26</text>
+<rect x="1242" y="390" width="106" height="58" rx="4" class="blk hw"/>
+<text x="1250" y="414" class="f-title">IR beam</text>
+<text x="1250" y="430" class="f-det">A0 (PA16)</text>
+<path d="M880 88 L920 88" class="w " marker-end="url(#ov-a)"/>
+<text x="900" y="82" class="f-lab" text-anchor="middle">0x010</text>
+<path d="M1044 88 L1084 88" class="w " marker-end="url(#ov-a)"/>
+<text x="1064" y="82" class="f-lab" text-anchor="middle">y</text>
+<path d="M1044 110 L1064 110 L1064 179 L1084 179" class="w " marker-end="url(#ov-a)"/>
+<text x="1059" y="152" class="f-lab" text-anchor="end">fire</text>
+<path d="M982.0 128 L982.0 230" class="w " marker-end="url(#ov-a)"/>
+<text x="988.0" y="183" class="f-lab">x &#x2192; ref</text>
+<path d="M1044 248 L1084 248" class="w " marker-end="url(#ov-a)"/>
+<text x="1064" y="242" class="f-lab" text-anchor="middle">u</text>
+<path d="M1084 339 L1064 339 L1064 270 L1044 270" class="w " marker-end="url(#ov-a)"/>
+<text x="1059" y="303" class="f-lab" text-anchor="end">pos</text>
+<path d="M982.0 310 L982.0 288" class="w " marker-end="url(#ov-a)"/>
+<text x="976.0" y="303" class="f-lab" text-anchor="end">pos_max</text>
+<path d="M1084 419 L1044 419" class="w " marker-end="url(#ov-a)"/>
+<text x="1064" y="413" class="f-lab" text-anchor="middle">goal</text>
+<path d="M920 419 L900 419 L900 110 L880 110" class="w " marker-end="url(#ov-a)"/>
+<text x="895" y="203" class="f-lab" text-anchor="end">0x020</text>
+<path d="M1208 99 L1242 99" class="w sig" marker-end="url(#ov-a)"/>
+<path d="M1208 179 L1242 179" class="w sig" marker-end="url(#ov-a)"/>
+<path d="M1208 259 L1242 259" class="w sig" marker-end="url(#ov-a)"/>
+<path d="M1242 339 L1208 339" class="w sig" marker-end="url(#ov-a)"/>
+<path d="M1242 419 L1208 419" class="w sig" marker-end="url(#ov-a)"/>
+<path d="M1295.0 288 L1295.0 310" class="w sig" marker-end="url(#ov-a)"/>
+<text x="1301.0" y="303" class="f-lab">shaft</text></svg></div>
+    <p class="hint">Wide drawing: scroll sideways.</p>
+    <figcaption><b>Signal path.</b> The joystick is sampled, calibrated to &#xB1;100 % and sent as CAN frame
+    <code>0x010</code> every 50 ms. Node 2 checks the frame, then uses y for the servo, x as the position
+    reference for the PI loop, and the fire bit for the solenoid. A ball through the IR beam raises the score,
+    which returns as frame <code>0x020</code> and is drawn on the OLED. Solid arrows are data inside a node,
+    dashed arrows are wires to hardware.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="n">KEY</span>How to read figures 2 and 3</h2>
+  <ul class="legend"><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><rect x="2" y="2" width="60" height="16" rx="3" class="blk"/><text x="8" y="14" class="t-title">x.c</text></svg><span>One source file, with every function it defines</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><rect x="2" y="2" width="60" height="16" rx="3" class="blk hw"/></svg><span>Hardware outside the firmware</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><rect x="2" y="2" width="60" height="16" rx="3" class="blk ghost"/></svg><span>Source file that is not part of the build</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><text x="2" y="14" class="t-fn">name</text></svg><span>Function other files can call</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><text x="2" y="14" class="t-fn st">name</text></svg><span>File-local function (<code>static</code>)</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><text x="2" y="14" class="t-fn"><tspan class="tag">ISR</tspan> name</text></svg><span>Interrupt handler</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><text x="2" y="14" class="t-fn">name <tspan class="tag">&#x2020;</tspan></text></svg><span>Defined but never called</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><g class="pill"><rect x="2" y="3" width="38" height="14" rx="7"/><text x="21" y="13" text-anchor="middle">printf</text></g></svg><span>Prints debug text to the UART through stdio</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><defs><marker id="lg-a" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah"/></marker></defs><path d="M2 10 L60 10" class="w" marker-end="url(#lg-a)"/></svg><span>Function call, labelled with the functions called</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><defs><marker id="lg-a" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah"/></marker></defs><path d="M2 10 L60 10" class="w sig" marker-end="url(#lg-a)"/></svg><span>Hardware access: pin, bus or memory-mapped address</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><path d="M2 10 L62 10 M32 10 L32 20" class="w"/><circle cx="32" cy="10" r="2.8" class="dot"/></svg><span>Joined lines. Lines that cross without a dot are not connected</span></li><li><svg viewBox="0 0 64 20" aria-hidden="true" class="lg-n1"><path d="M2 10 L62 10" class="w can"/></svg><span>CAN bus</span></li></ul>
+</section>
+
+<section>
+  <h2><span class="n">FIG 2</span>Node 1 functions (ATmega162)</h2>
+  <figure>
+    <div class="sheet"><svg viewBox="-20 0 1360 1200" role="img" aria-label="Node 1 block diagram: main.c on top, menu, calibration, joystick and CAN modules below it, the OLED, IO-board, ADC and MCP2515 drivers on the SPI and external-memory buses, hardware at the bottom." class="fig-n1"><defs><marker id="n1-a" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah"/></marker><marker id="n1-c" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah-can"/></marker></defs><rect x="20" y="16" width="1280" height="146" rx="4" class="blk app"/>
+<text x="30" y="33" class="t-title">main.c</text>
+<text x="83.8" y="33" class="t-note">application: boot, menu dispatch, screens</text>
+<text x="32" y="54" class="t-hdr">ENTRY</text>
+<text x="32" y="71" class="t-fn">main</text>
+<text x="110" y="54" class="t-hdr">SCREENS (STATIC)</text>
+<text x="110" y="71" class="t-fn st">game</text>
+<text x="110" y="86" class="t-fn st">can_test</text>
+<text x="110" y="101" class="t-fn st">show_inputs</text>
+<text x="110" y="116" class="t-fn st">led_test</text>
+<text x="110" y="131" class="t-fn st">play_splash</text>
+<text x="250" y="54" class="t-hdr">HELPERS (STATIC)</text>
+<text x="250" y="71" class="t-fn st">joystick_clicked</text>
+<text x="250" y="86" class="t-fn st">read_joystick</text>
+<text x="250" y="101" class="t-fn st">send_joystick</text>
+<text x="250" y="116" class="t-fn st">draw_score</text>
+<text x="250" y="131" class="t-fn st">print_adc_values</text>
+<text x="250" y="146" class="t-fn st">draw_io_board_inputs</text>
+<text x="430" y="54" class="t-hdr">BOOT SEQUENCE IN MAIN</text>
+<text x="430" y="71" class="t-fn">uart_init &#x2192; xmem_init &#x2192; adc_init</text>
+<text x="430" y="86" class="t-fn">&#x2192; sram_test &#x2192; spi_init &#x2192; can_init</text>
+<text x="430" y="101" class="t-fn">&#x2192; mcp2515_print_registers &#x2192; sei</text>
+<text x="430" y="116" class="t-fn">&#x2192; oled_init &#x2192; play_splash</text>
+<text x="430" y="131" class="t-fn">&#x2192; calibration_ask</text>
+<text x="430" y="146" class="t-fn">&#x2192; loop: menu_run &#x2192; screen &#x2192; play_splash</text>
+<text x="730" y="54" class="t-hdr">MENU ITEM</text>
+<text x="730" y="71" class="t-fn">GAME</text>
+<text x="730" y="86" class="t-fn">INPUT VIEW</text>
+<text x="730" y="101" class="t-fn">LED TEST</text>
+<text x="730" y="116" class="t-fn">CAN TEST</text>
+<text x="730" y="131" class="t-fn">SETTINGS &#x25B8; BRIGHT</text>
+<text x="730" y="146" class="t-fn">SETTINGS &#x25B8; DIM</text>
+<text x="870" y="54" class="t-hdr">RUNS</text>
+<text x="870" y="71" class="t-fn">&#x2192; game</text>
+<text x="870" y="86" class="t-fn">&#x2192; show_inputs</text>
+<text x="870" y="101" class="t-fn">&#x2192; led_test</text>
+<text x="870" y="116" class="t-fn">&#x2192; can_test</text>
+<text x="870" y="131" class="t-fn">&#x2192; oled_contrast(0xFF)</text>
+<text x="870" y="146" class="t-fn">&#x2192; oled_contrast(0x10)</text>
+<g class="pill"><rect x="1256" y="22" width="38" height="14" rx="7"/><text x="1275" y="32" text-anchor="middle">printf</text></g>
+<rect x="211" y="212" width="128" height="92" rx="4" class="blk mod"/>
+<text x="221" y="229" class="t-title">can.c</text>
+<text x="221" y="242" class="t-note">CAN API, 125 kbit/s</text>
+<text x="221" y="261" class="t-fn">can_init</text>
+<text x="221" y="276" class="t-fn">can_send</text>
+<text x="221" y="291" class="t-fn">can_receive</text>
+<rect x="404" y="212" width="176" height="287" rx="4" class="blk mod"/>
+<text x="414" y="229" class="t-title">calibration.c</text>
+<text x="414" y="242" class="t-note">axis calibration + EEPROM</text>
+<text x="414" y="261" class="t-fn">calibration_ask</text>
+<text x="414" y="276" class="t-fn">calibration_run</text>
+<text x="414" y="291" class="t-fn">calibration_apply</text>
+<text x="414" y="306" class="t-fn st">load_calibration</text>
+<text x="414" y="321" class="t-fn st">save_calibration</text>
+<text x="414" y="336" class="t-fn st">apply_defaults</text>
+<text x="414" y="351" class="t-fn st">calibrate_joystick</text>
+<text x="414" y="366" class="t-fn st">calibrate_touchpad</text>
+<text x="414" y="381" class="t-fn st">calibrate_axis</text>
+<text x="414" y="396" class="t-fn st">center_between_extremes</text>
+<text x="414" y="411" class="t-fn st">read_on_press</text>
+<text x="414" y="426" class="t-fn st">read_channel_on_press</text>
+<text x="414" y="441" class="t-fn st">wait_for_button</text>
+<text x="414" y="456" class="t-fn st">wait_for_release</text>
+<text x="414" y="471" class="t-fn st">wait_for_left_or_right</text>
+<text x="414" y="486" class="t-fn st">button_down</text>
+<g class="pill"><rect x="536" y="218" width="38" height="14" rx="7"/><text x="555" y="228" text-anchor="middle">printf</text></g>
+<rect x="710" y="212" width="124" height="152" rx="4" class="blk mod"/>
+<text x="720" y="229" class="t-title">menu.c</text>
+<text x="720" y="242" class="t-note">OLED menu tree</text>
+<text x="720" y="261" class="t-fn">menu_run</text>
+<text x="720" y="276" class="t-fn st">read_input</text>
+<text x="720" y="291" class="t-fn st">to_event</text>
+<text x="720" y="306" class="t-fn st">first_visible</text>
+<text x="720" y="321" class="t-fn st">draw_item</text>
+<text x="720" y="336" class="t-fn st">draw_menu</text>
+<text x="720" y="351" class="t-fn st">move_selection</text>
+<g class="pill"><rect x="790" y="218" width="38" height="14" rx="7"/><text x="809" y="228" text-anchor="middle">printf</text></g>
+<rect x="944" y="212" width="176" height="122" rx="4" class="blk mod"/>
+<text x="954" y="229" class="t-title">joystick.c</text>
+<text x="954" y="242" class="t-note">percent + direction</text>
+<text x="954" y="261" class="t-fn">joystick_position</text>
+<text x="954" y="276" class="t-fn">joystick_direction</text>
+<text x="954" y="291" class="t-fn">joystick_direction_name</text>
+<text x="954" y="306" class="t-fn">joystick_print_position</text>
+<text x="954" y="321" class="t-fn st">to_percent</text>
+<g class="pill"><rect x="1076" y="218" width="38" height="14" rx="7"/><text x="1095" y="228" text-anchor="middle">printf</text></g>
+<rect x="1150" y="212" width="150" height="122" rx="4" class="blk mod"/>
+<text x="1160" y="229" class="t-title">joystick_box.c</text>
+<text x="1160" y="242" class="t-note">position box on OLED</text>
+<text x="1160" y="261" class="t-fn">joystick_box_init</text>
+<text x="1160" y="276" class="t-fn">joystick_box_show</text>
+<text x="1160" y="291" class="t-fn st">dot_offset</text>
+<text x="1160" y="306" class="t-fn st">is_lit</text>
+<text x="1160" y="321" class="t-fn st">draw_page</text>
+<rect x="20" y="751" width="132" height="122" rx="4" class="blk mod"/>
+<text x="30" y="768" class="t-title">uart.c</text>
+<text x="30" y="781" class="t-note">USART0, stdio streams</text>
+<text x="30" y="800" class="t-fn">uart_init</text>
+<text x="30" y="815" class="t-fn">uart_transmit</text>
+<text x="30" y="830" class="t-fn">uart_receive</text>
+<text x="30" y="845" class="t-fn st">uart_putchar</text>
+<text x="30" y="860" class="t-fn st">uart_getchar</text>
+<rect x="180" y="541" width="190" height="332" rx="4" class="blk mod"/>
+<text x="190" y="558" class="t-title">mcp2515.c</text>
+<text x="190" y="571" class="t-note">MCP2515 over SPI + INT0</text>
+<text x="190" y="590" class="t-fn">mcp2515_init</text>
+<text x="190" y="605" class="t-fn">mcp2515_reset</text>
+<text x="190" y="620" class="t-fn">mcp2515_set_mode</text>
+<text x="190" y="635" class="t-fn">mcp2515_transmit</text>
+<text x="190" y="650" class="t-fn">mcp2515_receive</text>
+<text x="190" y="665" class="t-fn">mcp2515_interrupt_pending</text>
+<text x="190" y="680" class="t-fn">mcp2515_read</text>
+<text x="190" y="695" class="t-fn">mcp2515_read_array</text>
+<text x="190" y="710" class="t-fn">mcp2515_write</text>
+<text x="190" y="725" class="t-fn">mcp2515_write_array</text>
+<text x="190" y="740" class="t-fn">mcp2515_bit_modify</text>
+<text x="190" y="755" class="t-fn">mcp2515_read_status</text>
+<text x="190" y="770" class="t-fn">mcp2515_request_to_send</text>
+<text x="190" y="785" class="t-fn">mcp2515_print_registers</text>
+<text x="190" y="800" class="t-fn st">int0_init</text>
+<text x="190" y="815" class="t-fn st">begin</text>
+<text x="190" y="830" class="t-fn st">receive_init</text>
+<text x="190" y="845" class="t-fn st">read_rx_buffer</text>
+<text x="190" y="860" class="t-fn"><tspan class="tag">ISR</tspan> INT0_vect</text>
+<g class="pill"><rect x="326" y="547" width="38" height="14" rx="7"/><text x="345" y="557" text-anchor="middle">printf</text></g>
+<rect x="460" y="676" width="140" height="197" rx="4" class="blk mod"/>
+<text x="470" y="693" class="t-title">io_board.c</text>
+<text x="470" y="706" class="t-note">IO-board MCU over SPI</text>
+<text x="470" y="725" class="t-fn">io_board_joystick</text>
+<text x="470" y="740" class="t-fn">io_board_buttons</text>
+<text x="470" y="755" class="t-fn">io_board_touchpad</text>
+<text x="470" y="770" class="t-fn">io_board_slider</text>
+<text x="470" y="785" class="t-fn">io_board_led</text>
+<text x="470" y="800" class="t-fn">io_board_led_pwm</text>
+<text x="470" y="815" class="t-fn">io_board_info <tspan class="tag">&#x2020;</tspan></text>
+<text x="470" y="830" class="t-fn st">begin</text>
+<text x="470" y="845" class="t-fn st">read_command</text>
+<text x="470" y="860" class="t-fn st">write_led</text>
+<rect x="660" y="571" width="170" height="302" rx="4" class="blk mod"/>
+<text x="670" y="588" class="t-title">oled.c</text>
+<text x="670" y="601" class="t-note">SSD1309 text + bitmaps</text>
+<text x="670" y="620" class="t-fn">oled_init</text>
+<text x="670" y="635" class="t-fn">oled_clear</text>
+<text x="670" y="650" class="t-fn">oled_clear_line</text>
+<text x="670" y="665" class="t-fn">oled_home</text>
+<text x="670" y="680" class="t-fn">oled_goto_line</text>
+<text x="670" y="695" class="t-fn">oled_goto_column</text>
+<text x="670" y="710" class="t-fn">oled_pos</text>
+<text x="670" y="725" class="t-fn">oled_contrast</text>
+<text x="670" y="740" class="t-fn">oled_putchar</text>
+<text x="670" y="755" class="t-fn">oled_print</text>
+<text x="670" y="770" class="t-fn">oled_output</text>
+<text x="670" y="785" class="t-fn">oled_draw_image_h_page</text>
+<text x="670" y="800" class="t-fn">oled_draw_columns</text>
+<text x="670" y="815" class="t-fn st">oled_cmd</text>
+<text x="670" y="830" class="t-fn st">oled_data</text>
+<text x="670" y="845" class="t-fn st">oled_stream_putchar</text>
+<text x="670" y="860" class="t-fn st">image_h_byte</text>
+<rect x="900" y="796" width="140" height="77" rx="4" class="blk mod"/>
+<text x="910" y="813" class="t-title">adc.c</text>
+<text x="910" y="826" class="t-note">MAX156, clock on OC1A</text>
+<text x="910" y="845" class="t-fn">adc_init</text>
+<text x="910" y="860" class="t-fn">adc_read</text>
+<rect x="1100" y="811" width="140" height="62" rx="4" class="blk mod"/>
+<text x="1110" y="828" class="t-title">sram.c</text>
+<text x="1110" y="841" class="t-note">external RAM self-test</text>
+<text x="1110" y="860" class="t-fn">sram_test</text>
+<g class="pill"><rect x="1196" y="817" width="38" height="14" rx="7"/><text x="1215" y="827" text-anchor="middle">printf</text></g>
+<rect x="230" y="909" width="600" height="69" rx="4" class="blk mod"/>
+<text x="240" y="926" class="t-title">spi.c</text>
+<text x="286.5" y="926" class="t-note">SPI master, mode 0, 38.4 kHz, chip selects on PB1&#x2013;PB3</text>
+<text x="240" y="947" class="t-fn">spi_init</text>
+<text x="240" y="962" class="t-fn">spi_transfer</text>
+<text x="430" y="947" class="t-fn">spi_select</text>
+<text x="430" y="962" class="t-fn">spi_deselect_all</text>
+<text x="630" y="947" class="t-fn">spi_write</text>
+<text x="630" y="962" class="t-fn st">cs_mask</text>
+<rect x="900" y="909" width="340" height="54" rx="4" class="blk mod"/>
+<text x="910" y="926" class="t-title">xmem.c</text>
+<text x="963.8" y="926" class="t-note">external memory bus, A12&#x2013;A15 left to JTAG</text>
+<text x="910" y="947" class="t-fn">xmem_init</text>
+<rect x="20" y="1020" width="140" height="164" rx="4" class="blk hw"/>
+<text x="29" y="1037" class="h-title">PC</text>
+<text x="29" y="1052" class="h-det">USART0 &#xB7; 9600 8N1</text>
+<text x="29" y="1065" class="h-det">picocom terminal</text>
+<text x="29" y="1078" class="h-det">tools/plot_adc.py:</text>
+<text x="29" y="1091" class="h-fn">parse_line</text>
+<text x="29" y="1104" class="h-fn">channel_pair</text>
+<text x="29" y="1117" class="h-fn">autodetect_port</text>
+<text x="29" y="1130" class="h-fn">parse_args</text>
+<text x="29" y="1143" class="h-fn">main</text>
+<text x="29" y="1156" class="h-fn">class SerialReader</text>
+<text x="29" y="1169" class="h-fn">class Panel</text>
+<rect x="180" y="1020" width="200" height="73" rx="4" class="blk hw"/>
+<text x="189" y="1037" class="h-title">MCP2515 + CAN transceiver</text>
+<text x="189" y="1052" class="h-det">CS PB3 &#xB7; INT &#x2192; PD2 (INT0)</text>
+<text x="189" y="1065" class="h-det">16 MHz crystal, 125 kbit/s</text>
+<text x="189" y="1078" class="h-det">16 TQ per bit, sample at 87.5 %</text>
+<rect x="440" y="1020" width="180" height="73" rx="4" class="blk hw"/>
+<text x="449" y="1037" class="h-title">IO-board MCU</text>
+<text x="449" y="1052" class="h-det">CS PB2</text>
+<text x="449" y="1065" class="h-det">joystick button, buttons R/L/nav</text>
+<text x="449" y="1078" class="h-det">touchpad, slider, 6 LEDs</text>
+<rect x="660" y="1020" width="170" height="60" rx="4" class="blk hw"/>
+<text x="669" y="1037" class="h-title">OLED SSD1309</text>
+<text x="669" y="1052" class="h-det">CS PB1 &#xB7; D/C PB0</text>
+<text x="669" y="1065" class="h-det">128 &#xD7; 64, 8 pages of 8 rows</text>
+<rect x="890" y="1020" width="190" height="73" rx="4" class="blk hw"/>
+<text x="899" y="1037" class="h-title">MAX156 ADC</text>
+<text x="899" y="1052" class="h-det">0x1000&#x2013;0x13FF &#xB7; 8-bit, 4 channels</text>
+<text x="899" y="1065" class="h-det">CLK 2.4576 MHz from OC1A (PD5)</text>
+<text x="899" y="1078" class="h-det">AIN0/1 touchpad, AIN2/3 joystick</text>
+<rect x="1100" y="1020" width="150" height="60" rx="4" class="blk hw"/>
+<text x="1109" y="1037" class="h-title">External SRAM</text>
+<text x="1109" y="1052" class="h-det">0x1400&#x2013;0x1FFF</text>
+<text x="1109" y="1065" class="h-det">3072 bytes</text>
+<rect x="606" y="416" width="96" height="60" rx="4" class="blk hw"/>
+<text x="615" y="433" class="h-title">EEPROM</text>
+<text x="615" y="448" class="h-det">marker 0xA5</text>
+<text x="615" y="461" class="h-det">4 axes &#xD7; 3 bytes</text>
+<path d="M275.0 162 L275.0 212" class="w " marker-end="url(#n1-a)"/>
+<text x="281.0" y="183" class="t-lab">can_send</text>
+<text x="281.0" y="196" class="t-lab">can_receive</text>
+<path d="M492 162 L492 212" class="w " marker-end="url(#n1-a)"/>
+<text x="498" y="183" class="t-lab">calibration_ask</text>
+<text x="498" y="196" class="t-lab">calibration_apply</text>
+<path d="M772.0 162 L772.0 212" class="w " marker-end="url(#n1-a)"/>
+<text x="766.0" y="183" class="t-lab" text-anchor="end">menu_run</text>
+<path d="M1032.0 162 L1032.0 212" class="w " marker-end="url(#n1-a)"/>
+<text x="1026.0" y="183" class="t-lab" text-anchor="end">joystick_position &#xB7; _direction</text>
+<text x="1026.0" y="196" class="t-lab" text-anchor="end">_direction_name &#xB7; _print_position</text>
+<path d="M1225.0 162 L1225.0 212" class="w " marker-end="url(#n1-a)"/>
+<text x="1219.0" y="183" class="t-lab" text-anchor="end">joystick_box_init</text>
+<text x="1219.0" y="196" class="t-lab" text-anchor="end">joystick_box_show</text>
+<path d="M356 162 L356 541" class="w " marker-end="url(#n1-a)"/>
+<text x="370" y="462" class="t-lab" transform="rotate(-90 370 462)">mcp2515_print_registers</text>
+<path d="M390 162 L390 525 L950.0 525 L950.0 796" class="w " marker-end="url(#n1-a)"/>
+<path d="M450 499 L450 525" class="w "/>
+<circle cx="450" cy="525" r="2.8" class="dot"/>
+<path d="M772.0 364 L772.0 525" class="w "/>
+<circle cx="772.0" cy="525" r="2.8" class="dot"/>
+<path d="M530.0 525 L530.0 676" class="w " marker-end="url(#n1-a)"/>
+<circle cx="530.0" cy="525" r="2.8" class="dot"/>
+<path d="M720 525 L720 571" class="w " marker-end="url(#n1-a)"/>
+<circle cx="720" cy="525" r="2.8" class="dot"/>
+<text x="536.0" y="664" class="t-lab">io_board_*</text>
+<text x="714" y="559" class="t-lab" text-anchor="end">oled_*</text>
+<text x="956.0" y="784" class="t-lab">adc_read</text>
+<path d="M950.0 542 L950.0 552" class="halo"/>
+<path d="M1225.0 334 L1225.0 547 L806 547 L806 571" class="w " marker-end="url(#n1-a)"/>
+<text x="1219.0" y="541" class="t-lab" text-anchor="end">oled_draw_columns</text>
+<path d="M710 258 L580 258" class="w " marker-end="url(#n1-a)"/>
+<text x="645.0" y="252" class="t-lab" text-anchor="middle">calibration_apply</text>
+<path d="M834 258 L944 258" class="w " marker-end="url(#n1-a)"/>
+<text x="889.0" y="252" class="t-lab" text-anchor="middle">joystick_position</text>
+<text x="889.0" y="272" class="t-lab" text-anchor="middle">_direction</text>
+<path d="M580 445 L606 445" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<path d="M275.0 304 L275.0 541" class="w " marker-end="url(#n1-a)"/>
+<text x="269.0" y="394" class="t-lab" text-anchor="end">mcp2515_init &#xB7; _set_mode</text>
+<text x="269.0" y="407" class="t-lab" text-anchor="end">mcp2515_read &#xB7; _write</text>
+<text x="269.0" y="420" class="t-lab" text-anchor="end">mcp2515_transmit &#xB7; _receive</text>
+<path d="M300 873 L300 909" class="w " marker-end="url(#n1-a)"/>
+<path d="M530.0 873 L530.0 909" class="w " marker-end="url(#n1-a)"/>
+<path d="M745 873 L745 909" class="w " marker-end="url(#n1-a)"/>
+<path d="M970.0 873 L970.0 909" class="w sig" marker-end="url(#n1-a)"/>
+<text x="976.0" y="895" class="t-lab">ADC_BASE</text>
+<path d="M1170.0 873 L1170.0 909" class="w sig" marker-end="url(#n1-a)"/>
+<text x="1176.0" y="895" class="t-lab">SRAM_BASE</text>
+<path d="M300 978 L300 1020" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<path d="M530.0 978 L530.0 1020" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<path d="M745 978 L745 1020" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<path d="M970.0 963 L970.0 1020" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<path d="M1170.0 963 L1170.0 1020" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<path d="M86.0 873 L86.0 1020" class="w sig" marker-end="url(#n1-a)" marker-start="url(#n1-a)"/>
+<text x="92.0" y="933" class="t-lab">TX / RX</text>
+<path d="M205 1020 L205 873" class="w sig" marker-end="url(#n1-a)"/>
+<text x="199" y="933" class="t-lab" text-anchor="end">INT</text>
+<path d="M280 1093 L280 1129" class="w can"/>
+<path d="M200 1129 L780 1129" class="w can" marker-end="url(#n1-c)" marker-start="url(#n1-c)"/>
+<text x="294" y="1120" class="t-lab canlab">CAN bus &#xB7; 125 kbit/s &#xB7; to node 2 (figure 3)</text>
+<text x="294" y="1147" class="t-lab">out: 0x010 joystick {x+100, y+100, fire}  &#xB7;  in: 0x020 score {uint16, little-endian}</text></svg></div>
+    <p class="hint">Wide drawing: scroll sideways.</p>
+    <figcaption><b>109 functions in 14 files.</b> <code>main.c</code>, <code>calibration.c</code> and
+    <code>menu.c</code> all use the same three drivers (ADC, IO board, OLED), drawn as one shared rail.
+    Everything that talks SPI goes through <code>spi.c</code>; the ADC and the SRAM are reached as plain memory
+    addresses once <code>xmem_init</code> has enabled the bus. Init calls made once from <code>main</code> are
+    listed in its boot sequence and not drawn as arrows.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="n">FIG 3</span>Node 2 functions (SAM3X8E)</h2>
+  <figure>
+    <div class="sheet"><svg viewBox="0 0 1360 760" role="img" aria-label="Node 2 block diagram: main.c calls the CAN, servo, solenoid, IR, encoder, controller and motor modules directly; each driver sits on its own SAM3X8E peripheral and piece of hardware." class="fig-n2"><defs><marker id="n2-a" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah"/></marker><marker id="n2-c" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.9 L8 4 L0 7.1 z" class="ah-can"/></marker></defs><rect x="20" y="16" width="170" height="122" rx="4" class="blk vendor"/>
+<text x="30" y="33" class="t-title">sam/ startup</text>
+<text x="30" y="46" class="t-note">vendor: vectors and clocks</text>
+<text x="30" y="65" class="t-fn">Reset_Handler</text>
+<text x="30" y="80" class="t-fn">SystemInit</text>
+<text x="30" y="95" class="t-fn">SystemCoreClockUpdate</text>
+<text x="30" y="110" class="t-fn">system_init_flash</text>
+<text x="30" y="125" class="t-fn"><tspan class="tag">ISR</tspan> Dummy_Handler</text>
+<rect x="230" y="16" width="1108" height="161" rx="4" class="blk app"/>
+<text x="240" y="33" class="t-title">main.c</text>
+<text x="293.8" y="33" class="t-note">application: boot, track calibration, main loop</text>
+<text x="242" y="54" class="t-hdr">ENTRY + INTERRUPT</text>
+<text x="242" y="71" class="t-fn">main</text>
+<text x="242" y="86" class="t-fn"><tspan class="tag">ISR</tspan> SysTick_Handler</text>
+<text x="242" y="101" class="t-fn">1 ms tick &#x2192; msTicks</text>
+<text x="400" y="54" class="t-hdr">HELPERS (STATIC)</text>
+<text x="400" y="71" class="t-fn st">joystick_decode</text>
+<text x="400" y="86" class="t-fn st">joystick_to_ref</text>
+<text x="400" y="101" class="t-fn st">calibrate</text>
+<text x="400" y="116" class="t-fn st">drive_until_stall</text>
+<text x="400" y="131" class="t-fn st">score_count</text>
+<text x="400" y="146" class="t-fn st">score_send</text>
+<text x="400" y="161" class="t-fn st">pi_debug_print</text>
+<text x="550" y="54" class="t-hdr">BOOT SEQUENCE IN MAIN</text>
+<text x="550" y="71" class="t-fn">SystemInit &#x2192; motor_init &#x2192; solenoid_init</text>
+<text x="550" y="86" class="t-fn">&#x2192; watchdog off &#x2192; SysTick_Config</text>
+<text x="550" y="101" class="t-fn">&#x2192; uart_init &#x2192; servo_init &#x2192; ir_init</text>
+<text x="550" y="116" class="t-fn">&#x2192; can_init &#x2192; encoder_init</text>
+<text x="550" y="131" class="t-fn">&#x2192; calibrate &#x2192; controller_init</text>
+<text x="550" y="146" class="t-fn">&#x2192; main loop</text>
+<text x="840" y="54" class="t-hdr">MAIN LOOP, TIMED FROM MSTICKS</text>
+<text x="840" y="71" class="t-fn per">every pass</text>
+<text x="840" y="86" class="t-fn per">every pass</text>
+<text x="840" y="101" class="t-fn per">every 10 ms</text>
+<text x="840" y="116" class="t-fn per">every 100 ms</text>
+<text x="840" y="131" class="t-fn per">every 200 ms</text>
+<text x="840" y="146" class="t-fn per">every 500 ms</text>
+<text x="840" y="161" class="t-fn per">no frame 500 ms</text>
+<text x="955" y="71" class="t-fn">can_rx &#x2192; joystick_decode &#x2192; servo, solenoid_fire</text>
+<text x="955" y="86" class="t-fn">solenoid_update &#xB7; score_count &#x2192; ir_update</text>
+<text x="955" y="101" class="t-fn">encoder_read &#x2192; controller_update &#x2192; motor_set_speed</text>
+<text x="955" y="116" class="t-fn">score_send &#x2192; can_try_tx</text>
+<text x="955" y="131" class="t-fn">pi_debug_print</text>
+<text x="955" y="146" class="t-fn">CAN + IR status print</text>
+<text x="955" y="161" class="t-fn">servo centre, motor_stop, controller_reset</text>
+<g class="pill"><rect x="1294" y="22" width="38" height="14" rx="7"/><text x="1313" y="32" text-anchor="middle">printf</text></g>
+<rect x="20" y="156" width="170" height="317" rx="4" class="blk mod"/>
+<text x="30" y="173" class="t-title">uart.c</text>
+<text x="30" y="186" class="t-note">UART + printf backend</text>
+<text x="30" y="205" class="t-fn">uart_init</text>
+<text x="30" y="220" class="t-fn">uart_tx</text>
+<text x="30" y="235" class="t-fn">uart_rx</text>
+<text x="30" y="250" class="t-fn">uart_flush <tspan class="tag">&#x2020;</tspan></text>
+<text x="30" y="265" class="t-fn"><tspan class="tag">ISR</tspan> UART_Handler</text>
+<text x="30" y="280" class="t-fn">push</text>
+<text x="30" y="295" class="t-fn">pop</text>
+<text x="30" y="310" class="t-hdr">NEWLIB SYSCALL STUBS</text>
+<text x="30" y="325" class="t-fn">_write</text>
+<text x="30" y="340" class="t-fn">_read</text>
+<text x="30" y="355" class="t-fn">_sbrk</text>
+<text x="30" y="370" class="t-fn">_close</text>
+<text x="30" y="385" class="t-fn">_fstat</text>
+<text x="30" y="400" class="t-fn">_isatty</text>
+<text x="30" y="415" class="t-fn">_lseek</text>
+<text x="30" y="430" class="t-fn">_exit</text>
+<text x="30" y="445" class="t-fn">_kill</text>
+<text x="30" y="460" class="t-fn">_getpid</text>
+<g class="pill"><rect x="146" y="162" width="38" height="14" rx="7"/><text x="165" y="172" text-anchor="middle">printf</text></g>
+<rect x="230" y="351" width="132" height="122" rx="4" class="blk mod"/>
+<text x="240" y="368" class="t-title">can.c</text>
+<text x="240" y="381" class="t-note">CAN0, two mailboxes</text>
+<text x="240" y="400" class="t-fn">can_init</text>
+<text x="240" y="415" class="t-fn">can_rx</text>
+<text x="240" y="430" class="t-fn">can_try_tx</text>
+<text x="240" y="445" class="t-fn">can_tx <tspan class="tag">&#x2020;</tspan></text>
+<text x="240" y="460" class="t-fn">can_printmsg</text>
+<g class="pill"><rect x="318" y="357" width="38" height="14" rx="7"/><text x="337" y="367" text-anchor="middle">printf</text></g>
+<rect x="384" y="381" width="148" height="92" rx="4" class="blk mod"/>
+<text x="394" y="398" class="t-title">pwm.c</text>
+<text x="394" y="411" class="t-note">PWM channel 1, 50 Hz</text>
+<text x="394" y="430" class="t-fn">pwm_init</text>
+<text x="394" y="445" class="t-fn">pwm_set_pulse_us</text>
+<text x="394" y="460" class="t-fn st">us_to_ticks</text>
+<rect x="384" y="260" width="148" height="77" rx="4" class="blk mod"/>
+<text x="394" y="277" class="t-title">servo.c</text>
+<text x="394" y="290" class="t-note">percent &#x2192; pulse width</text>
+<text x="394" y="309" class="t-fn">servo_init</text>
+<text x="394" y="324" class="t-fn">servo_set_position</text>
+<rect x="554" y="351" width="132" height="122" rx="4" class="blk mod"/>
+<text x="564" y="368" class="t-title">solenoid.c</text>
+<text x="564" y="381" class="t-note">non-blocking pulse</text>
+<text x="564" y="400" class="t-fn">solenoid_init</text>
+<text x="564" y="415" class="t-fn">solenoid_fire</text>
+<text x="564" y="430" class="t-fn">solenoid_update</text>
+<text x="564" y="445" class="t-fn st">pin_on</text>
+<text x="564" y="460" class="t-fn st">pin_off</text>
+<rect x="708" y="306" width="160" height="167" rx="4" class="blk mod"/>
+<text x="718" y="323" class="t-title">ir.c</text>
+<text x="718" y="336" class="t-note">goal detection on the ADC</text>
+<text x="718" y="355" class="t-fn">ir_init</text>
+<text x="718" y="370" class="t-fn">ir_update</text>
+<text x="718" y="385" class="t-fn">ir_blocked</text>
+<text x="718" y="400" class="t-fn">ir_raw</text>
+<text x="718" y="415" class="t-fn">ir_filtered</text>
+<text x="718" y="430" class="t-fn st">adc_read</text>
+<text x="718" y="445" class="t-fn st">past_block_threshold</text>
+<text x="718" y="460" class="t-fn st">past_clear_threshold</text>
+<rect x="890" y="381" width="132" height="92" rx="4" class="blk mod"/>
+<text x="900" y="398" class="t-title">encoder.c</text>
+<text x="900" y="411" class="t-note">TC2 quadrature decoder</text>
+<text x="900" y="430" class="t-fn">encoder_init</text>
+<text x="900" y="445" class="t-fn">encoder_read</text>
+<text x="900" y="460" class="t-fn">encoder_reset</text>
+<rect x="1044" y="366" width="140" height="107" rx="4" class="blk mod"/>
+<text x="1054" y="383" class="t-title">controller.c</text>
+<text x="1054" y="396" class="t-note">PI, Kp 2, Ki 1, T 10 ms</text>
+<text x="1054" y="415" class="t-fn">controller_init</text>
+<text x="1054" y="430" class="t-fn">controller_update</text>
+<text x="1054" y="445" class="t-fn">controller_reset</text>
+<text x="1054" y="460" class="t-fn">controller_state</text>
+<rect x="1206" y="351" width="132" height="122" rx="4" class="blk mod"/>
+<text x="1216" y="368" class="t-title">motor.c</text>
+<text x="1216" y="381" class="t-note">PWM channel 0 + DIR</text>
+<text x="1216" y="400" class="t-fn">motor_init</text>
+<text x="1216" y="415" class="t-fn">motor_set_speed</text>
+<text x="1216" y="430" class="t-fn">motor_stop</text>
+<text x="1216" y="445" class="t-fn">motor_duty</text>
+<text x="1216" y="460" class="t-fn">motor_dir</text>
+<rect x="20" y="509" width="170" height="73" rx="4" class="blk hw"/>
+<text x="29" y="526" class="h-title">PC</text>
+<text x="29" y="541" class="h-det">UART 115200 via 16U2 USB</text>
+<text x="29" y="554" class="h-det">PA8 RX &#xB7; PA9 TX</text>
+<text x="29" y="567" class="h-det">picocom terminal</text>
+<rect x="230" y="509" width="132" height="73" rx="4" class="blk hw"/>
+<text x="239" y="526" class="h-title">CAN0 + transceiver</text>
+<text x="239" y="541" class="h-det">PA1 RX &#xB7; PA0 TX</text>
+<text x="239" y="554" class="h-det">125 kbit/s, 16 TQ</text>
+<text x="239" y="567" class="h-det">MB0 TX &#xB7; MB1 RX</text>
+<rect x="384" y="509" width="148" height="73" rx="4" class="blk hw"/>
+<text x="393" y="526" class="h-title">Servo</text>
+<text x="393" y="541" class="h-det">PB13 &#xB7; PWMH1</text>
+<text x="393" y="554" class="h-det">0.9&#x2013;2.1 ms every 20 ms</text>
+<text x="393" y="567" class="h-det">follows joystick y</text>
+<rect x="554" y="509" width="132" height="73" rx="4" class="blk hw"/>
+<text x="563" y="526" class="h-title">Solenoid + driver</text>
+<text x="563" y="541" class="h-det">PB25 (D2)</text>
+<text x="563" y="554" class="h-det">50 ms pulse</text>
+<text x="563" y="567" class="h-det">300 ms cooldown</text>
+<rect x="708" y="509" width="160" height="73" rx="4" class="blk hw"/>
+<text x="717" y="526" class="h-title">IR beam + photodiode</text>
+<text x="717" y="541" class="h-det">A0 = PA16 &#xB7; ADC channel 7</text>
+<text x="717" y="554" class="h-det">12-bit, sampled every 2 ms</text>
+<text x="717" y="567" class="h-det">EMA 1/8 &#xB7; 600/700 &#xB7; 1 s hold</text>
+<rect x="890" y="509" width="132" height="73" rx="4" class="blk hw"/>
+<text x="899" y="526" class="h-title">Quadrature encoder</text>
+<text x="899" y="541" class="h-det">PC25 &#xB7; PC26</text>
+<text x="899" y="554" class="h-det">TC2 channel 0 count</text>
+<text x="899" y="567" class="h-det">reset at end stop</text>
+<rect x="1206" y="509" width="132" height="73" rx="4" class="blk hw"/>
+<text x="1215" y="526" class="h-title">DC motor + driver</text>
+<text x="1215" y="541" class="h-det">PB12 EN &#xB7; PWMH0</text>
+<text x="1215" y="554" class="h-det">20 kHz &#xB7; PC23 DIR</text>
+<text x="1215" y="567" class="h-det">limited to &#xB1;50 %</text>
+<path d="M190 60 L230 60" class="w " marker-end="url(#n2-a)"/>
+<path d="M246 177 L246 351" class="w " marker-end="url(#n2-a)"/>
+<text x="252" y="327" class="t-lab">can_rx &#xB7; can_try_tx</text>
+<text x="252" y="340" class="t-lab">can_printmsg</text>
+<path d="M400 177 L400 260" class="w " marker-end="url(#n2-a)"/>
+<text x="406" y="249" class="t-lab">servo_set_position</text>
+<path d="M570 177 L570 351" class="w " marker-end="url(#n2-a)"/>
+<text x="576" y="327" class="t-lab">solenoid_fire</text>
+<text x="576" y="340" class="t-lab">solenoid_update</text>
+<path d="M724 177 L724 306" class="w " marker-end="url(#n2-a)"/>
+<text x="730" y="282" class="t-lab">ir_update &#xB7; ir_raw</text>
+<text x="730" y="295" class="t-lab">ir_filtered &#xB7; ir_blocked</text>
+<path d="M906 177 L906 381" class="w " marker-end="url(#n2-a)"/>
+<text x="912" y="357" class="t-lab">encoder_read</text>
+<text x="912" y="370" class="t-lab">encoder_reset</text>
+<path d="M1060 177 L1060 366" class="w " marker-end="url(#n2-a)"/>
+<text x="1066" y="342" class="t-lab">controller_update</text>
+<text x="1066" y="355" class="t-lab">_reset &#xB7; _state</text>
+<path d="M1322 177 L1322 351" class="w " marker-end="url(#n2-a)"/>
+<text x="1316" y="327" class="t-lab" text-anchor="end">motor_set_speed</text>
+<text x="1316" y="340" class="t-lab" text-anchor="end">_stop &#xB7; _duty &#xB7; _dir</text>
+<path d="M490 337 L490 381" class="w " marker-end="url(#n2-a)"/>
+<text x="484" y="363" class="t-lab" text-anchor="end">pwm_set_pulse_us</text>
+<path d="M296.0 473 L296.0 509" class="w sig" marker-end="url(#n2-a)" marker-start="url(#n2-a)"/>
+<path d="M458.0 473 L458.0 509" class="w sig" marker-end="url(#n2-a)"/>
+<path d="M620.0 473 L620.0 509" class="w sig" marker-end="url(#n2-a)"/>
+<path d="M1272.0 473 L1272.0 509" class="w sig" marker-end="url(#n2-a)"/>
+<path d="M105.0 473 L105.0 509" class="w sig" marker-end="url(#n2-a)" marker-start="url(#n2-a)"/>
+<path d="M788.0 509 L788.0 473" class="w sig" marker-end="url(#n2-a)"/>
+<path d="M956.0 509 L956.0 473" class="w sig" marker-end="url(#n2-a)"/>
+<path d="M1206 545 L1022 545" class="w sig" marker-end="url(#n2-a)"/>
+<text x="1114.0" y="538" class="t-lab" text-anchor="middle">motor shaft</text>
+<path d="M296.0 582 L296.0 618" class="w can"/>
+<path d="M240 618 L820 618" class="w can" marker-end="url(#n2-c)" marker-start="url(#n2-c)"/>
+<text x="312" y="609" class="t-lab canlab">CAN bus &#xB7; 125 kbit/s &#xB7; to node 1 (figure 2)</text>
+<text x="312" y="636" class="t-lab">in: 0x010 joystick {x+100, y+100, fire}  &#xB7;  out: 0x020 score {uint16, little-endian}</text>
+<rect x="20" y="658" width="1318" height="84" rx="4" class="blk ghost"/>
+<text x="30" y="675" class="t-title">time.c</text>
+<text x="83.8" y="675" class="t-note">starter code, not in the Makefile: it defines a second SysTick_Handler, so it cannot link next to main.c</text>
+<text x="32" y="696" class="t-fn st">time_init</text>
+<text x="32" y="711" class="t-fn"><tspan class="tag">ISR</tspan> SysTick_Handler</text>
+<text x="32" y="726" class="t-fn st">time_now</text>
+<text x="250" y="696" class="t-fn st">usecs</text>
+<text x="250" y="711" class="t-fn st">msecs</text>
+<text x="250" y="726" class="t-fn st">seconds</text>
+<text x="468" y="696" class="t-fn st">minutes</text>
+<text x="468" y="711" class="t-fn st">hours</text>
+<text x="468" y="726" class="t-fn st">totalUsecs</text>
+<text x="686" y="696" class="t-fn st">totalMsecs</text>
+<text x="686" y="711" class="t-fn st">totalSeconds</text>
+<text x="686" y="726" class="t-fn st">totalMinutes</text>
+<text x="904" y="696" class="t-fn st">totalHours</text>
+<text x="904" y="711" class="t-fn st">time_split</text>
+<text x="904" y="726" class="t-fn st">time_combine</text>
+<text x="1122" y="696" class="t-fn st">time_spinFor</text>
+<text x="1122" y="711" class="t-fn st">time_spinUntil</text>
+<text x="1122" y="726" class="t-fn st">ticksPerMs</text></svg></div>
+    <p class="hint">Wide drawing: scroll sideways.</p>
+    <figcaption><b>61 functions in 10 files, plus 5 in the vendor startup code.</b>
+    <code>main.c</code> is the only caller: no driver calls another, except <code>servo.c</code> into
+    <code>pwm.c</code>. The position loop therefore lives in the main loop, which passes
+    <code>encoder_read</code> into <code>controller_update</code> and the result into
+    <code>motor_set_speed</code> every 10 ms.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="n">NOTE</span>Code that is present but not wired in</h2>
+  <ul class="notes">
+    <li><code>node2/time.c</code> (18 functions) is not listed in the node 2 Makefile. It defines its own
+    <code>SysTick_Handler</code>, which <code>main.c</code> also defines, so the two cannot be linked together.</li>
+    <li><code>can_tx</code> and <code>uart_flush</code> on node 2 and <code>io_board_info</code> on node 1 are
+    defined but never called.</li>
+    <li><code>node1/tools/plot_adc.py</code> runs on the PC and plots the ADC lines that
+    <code>print_adc_values</code> prints; its functions are listed in the PC block of figure 2.</li>
+  </ul>
+</section>
+</div>
