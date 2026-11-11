@@ -22,12 +22,13 @@ static int uart_getchar(FILE *stream) {
 static FILE uart_stream = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
 void uart_init(uint16_t ubrr) {
+    //declares baudrate registers
     UBRR0H = (uint8_t)(ubrr >> 8);
     UBRR0L = (uint8_t)ubrr;
-
+    //enable RX and TX
     UCSR0B = (1 << RXEN0) | (1 << TXEN0);
 
-    // 8 data bits, no parity, 1 stop bit. URSEL0 selects UCSR0C over UBRR0H.
+    // 8 data bits, no parity, 1 stop bit. UBRR0H and UCSR0C share IO address, URSEL0=1 selects UCSR0C.
     UCSR0C = (1 << URSEL0) | (1 << UCSZ01) | (1 << UCSZ00);
 
     // Route stdio through UART so printf/scanf work
