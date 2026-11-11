@@ -18,11 +18,13 @@ static struct {
     struct axis_calibration axes[ADC_NUM_CHANNELS];
 } eeprom_calibration EEMEM;
 
-
+//load calibration from EEPROM, returns false if none are saved
 static bool load_calibration(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    //check marker
     if (eeprom_read_byte(&eeprom_calibration.marker) != EEPROM_CALIBRATION_MARKER) {
         return false;
     }
+    //copy saved values from EEPROM to cal 
     eeprom_read_block(cal, eeprom_calibration.axes, sizeof eeprom_calibration.axes);
     return true;
 }
@@ -59,6 +61,7 @@ static void wait_for_button(void) {
 // Returns true for a left-hand button, false for a right-hand one
 static bool wait_for_left_or_right(void) {
     wait_for_release();
+    //Poll buttons 
     while (1) {
         struct io_buttons buttons = io_board_buttons();
         if (buttons.left) {
@@ -150,8 +153,7 @@ void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     wait_for_button();
 }
 
-// Full ADC range with the rest position assumed at the midpoint. Wrong if an
-// axis is wired inverted or its rest position is far off 128.
+// Full ADC range with the rest position assumed at the midpoint
 static void apply_defaults(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
         cal[channel].low = DEFAULT_LOW;
@@ -160,10 +162,13 @@ static void apply_defaults(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     }
 }
 
+//loads calibration from EEPROM, or applies defaults if none are saved. If the user wants to recalibrate, they can press the left button. The right button skips calibration.
 void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    //attempt to load calibration from EEPROM, or apply defaults if none are saved
     if (load_calibration(cal)) {
         printf_P(PSTR("calibration: loaded from EEPROM\n"));
     } else {
+        //no saved values, apply defaults
         apply_defaults(cal);
         printf_P(PSTR("calibration: no saved values, using defaults L%u C%u H%u\n"),
                  DEFAULT_LOW, CALIBRATION_ORIGO, DEFAULT_HIGH);
@@ -171,6 +176,7 @@ void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
 
     oled_clear();
     fprintf_P(oled_output(), PSTR("CALIBRATE?\n\nLEFT BUTTON:  YES\nRIGHT BUTTON: SKIP"));
+    //run calibration if the user presses the left button, otherwise skip it
     if (wait_for_left_or_right()) {
         calibration_run(cal);
     }
