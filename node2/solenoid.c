@@ -2,9 +2,9 @@
 #include "solenoid.h"
 
 #define SOLENOID_MASK         PIO_PB25    // D2
-#define SOLENOID_ACTIVE_HIGH  1           // set to 0 if the plunger is out right after reset
-#define SOLENOID_PULSE_MS     50          // long enough to hit the ball, raise if it is too weak
-#define SOLENOID_COOLDOWN_MS  300         // minimum time between two shots
+#define SOLENOID_ACTIVE_HIGH  0
+#define SOLENOID_PULSE_MS     50
+#define SOLENOID_COOLDOWN_MS  300
 
 static int active = 0;
 static uint32_t fired_at = 0;
