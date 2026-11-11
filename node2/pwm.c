@@ -9,6 +9,7 @@
 #define PULSE_CENTER_US 1500UL      // Servo's centre position
 
 
+//convert microseconds to PWM ticks
 static uint32_t us_to_ticks(uint32_t us){
     // 64-bit maths: 20000 * 656250 = 1.3e10 does not fit in 32 bits
     return (uint32_t)(((uint64_t)us * PWM_CLK_HZ) / 1000000UL); // 20000 us -> 13125 ticks
@@ -34,6 +35,7 @@ void pwm_init(void)
     PWM->PWM_ENA = PWM_ENA_CHID1;
 }
 
+//set pulse width in microseconds, clamped to 900-2100
 void pwm_set_pulse_us(uint32_t pulse_us)
 {
     // Safety clamp

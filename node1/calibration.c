@@ -13,20 +13,23 @@
 #define DEFAULT_HIGH    CALIBRATION_MAX
 #define EEPROM_CALIBRATION_MARKER 0xA5
 
+//calibration as saved in EEPROM, marker tells if values are valid
 static struct {
     uint8_t marker;
     struct axis_calibration axes[ADC_NUM_CHANNELS];
 } eeprom_calibration EEMEM;
 
-
+//load calibration from EEPROM, returns false if none are saved
 static bool load_calibration(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    //check marker
     if (eeprom_read_byte(&eeprom_calibration.marker) != EEPROM_CALIBRATION_MARKER) {
         return false;
     }
+    //copy saved values from EEPROM to cal 
     eeprom_read_block(cal, eeprom_calibration.axes, sizeof eeprom_calibration.axes);
     return true;
 }
-
+//save calibration to EEPROM
 static void save_calibration(const struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     // Mark the record invalid until all values have been written.
     eeprom_update_byte(&eeprom_calibration.marker, 0);
@@ -42,6 +45,7 @@ static bool button_down(void) {
     return (buttons.right | buttons.left) != 0;
 }
 
+//wait until all buttons are released
 static void wait_for_release(void) {
     while (button_down()) {
         _delay_ms(BUTTON_POLL_MS);
@@ -59,6 +63,7 @@ static void wait_for_button(void) {
 // Returns true for a left-hand button, false for a right-hand one
 static bool wait_for_left_or_right(void) {
     wait_for_release();
+    //Poll buttons 
     while (1) {
         struct io_buttons buttons = io_board_buttons();
         if (buttons.left) {
@@ -71,8 +76,8 @@ static bool wait_for_left_or_right(void) {
     }
 }
 
-// Prompts are flash strings (PSTR) to keep them out of the 1 KiB internal RAM.
-// They must fit one 21-character OLED line.
+
+//show prompt, wait for button press, read all ADC channels
 static void read_on_press(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) {
     oled_clear();
     fprintf_P(oled_output(), PSTR("CALIBRATION\n\n%S\n\nTHEN PRESS A BUTTON"), prompt);
@@ -80,6 +85,7 @@ static void read_on_press(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) 
     adc_read(values);
 }
 
+//show prompt, wait for button press, return value of one ADC channel
 static uint8_t read_channel_on_press(const char *prompt, uint8_t channel) {
     uint8_t values[ADC_NUM_CHANNELS];
     read_on_press(prompt, values);
@@ -95,14 +101,17 @@ static bool center_between_extremes(const struct axis_calibration *cal) {
 // The touchpad has no rest position, so its center is derived from the extremes.
 static void calibrate_axis(struct axis_calibration *cal, uint8_t channel, const char *low_prompt, const char *high_prompt, bool center_from_extremes) {
     while (1) {
+        //measure both extremes
         cal->low = read_channel_on_press(low_prompt, channel);
         cal->high = read_channel_on_press(high_prompt, channel);
         if (center_from_extremes) {
             cal->center = ((uint16_t) cal->low + cal->high) / 2;
         }
+        //values are valid, done
         if (center_between_extremes(cal)) {
             return;
         }
+        //invalid, show error and try again
         oled_clear();
         fprintf_P(oled_output(),
                   PSTR("CALIBRATION ERROR\n\nCH%u L%u C%u H%u\nCENTER MUST LIE\n"
@@ -112,6 +121,7 @@ static void calibrate_axis(struct axis_calibration *cal, uint8_t channel, const 
     }
 }
 
+//calibrates joystick by measuring rest position, then min/max for each axis
 static void calibrate_joystick(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     uint8_t rest[ADC_NUM_CHANNELS];
     read_on_press(PSTR("RELEASE THE JOYSTICK"), rest);
@@ -124,6 +134,7 @@ static void calibrate_joystick(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
                    PSTR("PUSH JOYSTICK LEFT"), PSTR("PUSH JOYSTICK RIGHT"), false);
 }
 
+//calibrates touchpad by measuring min/max for each axis, center is derived from extremes
 static void calibrate_touchpad(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     calibrate_axis(&cal[TOUCHPAD_Y_CHANNEL], TOUCHPAD_Y_CHANNEL,
                    PSTR("HOLD TOUCHPAD BOTTOM"), PSTR("HOLD TOUCHPAD TOP"),
@@ -133,12 +144,14 @@ static void calibrate_touchpad(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
                    true);
 }
 
+//calibration script
 void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     calibrate_joystick(cal);
     calibrate_touchpad(cal);
     save_calibration(cal);
     printf_P(PSTR("calibration: saved to EEPROM\n"));
 
+    //show result on OLED
     FILE *out = oled_output();
     oled_clear();
     fprintf_P(out, PSTR("CALIBRATION DONE\n\n"));
@@ -150,8 +163,7 @@ void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     wait_for_button();
 }
 
-// Full ADC range with the rest position assumed at the midpoint. Wrong if an
-// axis is wired inverted or its rest position is far off 128.
+// Full ADC range with the rest position assumed at the midpoint
 static void apply_defaults(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
         cal[channel].low = DEFAULT_LOW;
@@ -160,10 +172,13 @@ static void apply_defaults(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     }
 }
 
+//loads calibration from EEPROM, or applies defaults if none are saved. If the user wants to recalibrate, they can press the left button. The right button skips calibration.
 void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
+    //attempt to load calibration from EEPROM, or apply defaults if none are saved
     if (load_calibration(cal)) {
         printf_P(PSTR("calibration: loaded from EEPROM\n"));
     } else {
+        //no saved values, apply defaults
         apply_defaults(cal);
         printf_P(PSTR("calibration: no saved values, using defaults L%u C%u H%u\n"),
                  DEFAULT_LOW, CALIBRATION_ORIGO, DEFAULT_HIGH);
@@ -171,12 +186,15 @@ void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
 
     oled_clear();
     fprintf_P(oled_output(), PSTR("CALIBRATE?\n\nLEFT BUTTON:  YES\nRIGHT BUTTON: SKIP"));
+    //run calibration if the user presses the left button, otherwise skip it
     if (wait_for_left_or_right()) {
         calibration_run(cal);
     }
 }
 
+//convert raw ADC value to 0-255 using calibration, center maps to 128
 uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw) {
+    //distances from center
     int16_t offset = (int16_t) raw - cal->center;
     int16_t low_span = (int16_t) cal->low - cal->center;
     int16_t high_span = (int16_t) cal->high - cal->center;
@@ -192,6 +210,7 @@ uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw) {
                + (int32_t) (CALIBRATION_MAX - CALIBRATION_ORIGO) * offset / high_span;
     }
 
+    //clamp to 0-255
     if (scaled < 0) {
         return 0;
     }

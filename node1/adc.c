@@ -22,20 +22,23 @@
 #define ADC_START_CONVERSION 0
 
 
+//ADC is memory mapped: write starts conversion, read returns one channel
 static volatile uint8_t *const adc = (uint8_t *) ADC_BASE;
 
 
 void adc_init(void) {
+    //Set OC1A as outpu to use as clock for ADC
     DDRD |= (1 << PD5);
 
-    // Toggling OC1A in hardware on every compare match gives a 50% duty
-    // cycle clock that keeps running without any CPU involvement.
+    //Toggle OC1A on compare match, sets the clock frequency depending on OCR1A value
     TCCR1A |= (1 << COM1A0);
     OCR1A = ADC_CLOCK_OCR;
+
     // CTC mode 4 (TOP = OCR1A), no prescaler. Setting CS10 starts the timer.
     TCCR1B |= (1 << WGM12) | (1 << CS10);
 }
 
+//start conversion, wait, read all channels into values
 void adc_read(uint8_t values[ADC_NUM_CHANNELS]) {
     // All channels are sampled on WR's falling edge, which also resets the
     // RAM read pointer to channel 0.
