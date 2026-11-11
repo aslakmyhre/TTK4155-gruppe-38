@@ -22,6 +22,7 @@
 #define ADC_START_CONVERSION 0
 
 
+//ADC is memory mapped: write starts conversion, read returns one channel
 static volatile uint8_t *const adc = (uint8_t *) ADC_BASE;
 
 
@@ -37,6 +38,7 @@ void adc_init(void) {
     TCCR1B |= (1 << WGM12) | (1 << CS10);
 }
 
+//start conversion, wait, read all channels into values
 void adc_read(uint8_t values[ADC_NUM_CHANNELS]) {
     // All channels are sampled on WR's falling edge, which also resets the
     // RAM read pointer to channel 0.

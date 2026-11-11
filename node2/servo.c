@@ -10,6 +10,7 @@ void servo_init(void)
     pwm_init();                     // starts at 1.5 ms (centre)
 }
 
+//set servo position in %, -100 to 100
 void servo_set_position(int8_t percent)
 {
     // Safety layer 1: keep the input inside -100..100

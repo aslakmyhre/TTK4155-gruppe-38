@@ -43,6 +43,7 @@
 
 #define COUNT(array) (sizeof (array) / sizeof (array)[0])
 
+//actions the menu can return
 enum action {
     ACTION_GAME,
     ACTION_INPUT_VIEW,
@@ -52,12 +53,14 @@ enum action {
     ACTION_DIM,
 };
 
+//settings submenu
 static const struct menu_item settings_items[] = {
     { "BRIGHT", NULL, ACTION_BRIGHT },
     { "DIM",    NULL, ACTION_DIM },
 };
 static const struct menu settings_menu = { "SETTINGS", settings_items, COUNT(settings_items) };
 
+//main menu
 static const struct menu_item main_items[] = {
     { "GAME",       NULL,           ACTION_GAME },
     { "INPUT VIEW", NULL,           ACTION_INPUT_VIEW },
@@ -67,6 +70,7 @@ static const struct menu_item main_items[] = {
 };
 static const struct menu main_menu = { "MAIN MENU", main_items, COUNT(main_items) };
 
+//calibration for each ADC channel
 static struct axis_calibration cal[ADC_NUM_CHANNELS];
 
 
@@ -80,6 +84,7 @@ static bool joystick_clicked(bool *was_pressed)
     return clicked;
 }
 
+//print calibrated ADC values, joystick position and raw values over UART
 static void print_adc_values(void)
 {
     uint8_t raw[ADC_NUM_CHANNELS];
@@ -105,6 +110,7 @@ static void print_adc_values(void)
 /* Fixed-width fields, so each redraw overwrites every digit of the last one */
 static void draw_io_board_inputs(void)
 {
+    //read all inputs from IO-board
     struct io_joystick joy = io_board_joystick();
     struct io_touchpad pad = io_board_touchpad();
     struct io_slider slider = io_board_slider();
@@ -155,9 +161,11 @@ static void led_test(void)
     oled_pos(EXIT_HINT_LINE, 0);
     oled_print("CLICK TO EXIT");
     while (!joystick_clicked(&was_pressed)) {
+        //find buttons pressed since last pass
         uint8_t right = io_board_buttons().right;
         uint8_t newly_pressed = right & ~previous;
         previous = right;
+        //toggle LED for each newly pressed button
         for (uint8_t led = 0; led < IO_BOARD_LED_COUNT; led++) {
             if (newly_pressed & (1 << led)) {
                 leds_on ^= 1 << led;
@@ -170,6 +178,7 @@ static void led_test(void)
     }
 }
 
+//read joystick from ADC, return calibrated position in percent
 static struct joystick_position read_joystick(void)
 {
     uint8_t raw[ADC_NUM_CHANNELS];
@@ -187,6 +196,7 @@ static bool send_joystick(struct joystick_position pos, bool fire)
     struct can_message message = {
         .id = CAN_TEST_ID,
         .length = CAN_TEST_LENGTH,
+        //add 100 so -100..100 is sent as 0..200
         .data = { (uint8_t)pos.x+100, (uint8_t)pos.y+100, fire ? 1 : 0 },
     };
     return can_send(&message);
@@ -205,6 +215,7 @@ static void can_test(void)
     uint8_t passes = 0;
 
     oled_clear();
+    //draw labels and empty boxes
     oled_pos(0, SENT_LABEL_X);
     oled_print("JOYSTICK");
     oled_pos(0, RECEIVED_LABEL_X);
@@ -215,6 +226,7 @@ static void can_test(void)
     oled_print("CLICK TO EXIT");
 
     while (!joystick_clicked(&was_pressed)) {
+        //send joystick position, show it in left box
         struct joystick_position pos = read_joystick();
         if (send_joystick(pos, false))
             sent++;
@@ -232,12 +244,15 @@ static void can_test(void)
                 continue;
             }
             received++;
+            //show received position in right box
             struct joystick_position echo = { (int8_t)message.data[0], (int8_t)message.data[1] };
             joystick_box_show(&received_box, echo);
         }
 
+        //show number of sent and received messages
         oled_pos(CAN_TEST_COUNT_LINE, 0);
         fprintf_P(out, PSTR("TX %5u   RX %5u"), sent, received);
+        //print MCP registers about once per second
         if (++passes == CAN_DEBUG_EVERY) {
             passes = 0;
             mcp2515_print_registers();
@@ -246,6 +261,7 @@ static void can_test(void)
     }
 }
 
+//show score on OLED
 static void draw_score(uint16_t score)
 {
     oled_clear_line(GAME_SCORE_LINE);
@@ -274,12 +290,14 @@ static void game(void)
         send_joystick(read_joystick(), fire);
 
         struct can_message message;
+        //read score messages from node 2
         while (can_receive(&message)) {
             if (message.id != SCORE_CAN_ID || message.length != SCORE_CAN_LENGTH) {
                 printf_P(PSTR("game: unexpected id %03X length %u\n"),
                          message.id, message.length);
                 continue;
             }
+            //score is two bytes, low byte first
             uint16_t score = message.data[0] | (uint16_t)message.data[1] << 8;
             // Redraw only on change: clearing the line every frame flickers
             if (!has_score || score != shown) {
@@ -324,6 +342,7 @@ int main(void) {
     calibration_ask(cal);
 
     while (1) {
+        //show menu, run chosen action
         uint8_t action = menu_run(&main_menu, cal);
         switch (action) {
             case ACTION_GAME:       game(); break;

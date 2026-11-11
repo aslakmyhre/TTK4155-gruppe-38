@@ -13,6 +13,7 @@
 #define DEFAULT_HIGH    CALIBRATION_MAX
 #define EEPROM_CALIBRATION_MARKER 0xA5
 
+//calibration as saved in EEPROM, marker tells if values are valid
 static struct {
     uint8_t marker;
     struct axis_calibration axes[ADC_NUM_CHANNELS];
@@ -44,6 +45,7 @@ static bool button_down(void) {
     return (buttons.right | buttons.left) != 0;
 }
 
+//wait until all buttons are released
 static void wait_for_release(void) {
     while (button_down()) {
         _delay_ms(BUTTON_POLL_MS);
@@ -83,6 +85,7 @@ static void read_on_press(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) 
     adc_read(values);
 }
 
+//show prompt, wait for button press, return value of one ADC channel
 static uint8_t read_channel_on_press(const char *prompt, uint8_t channel) {
     uint8_t values[ADC_NUM_CHANNELS];
     read_on_press(prompt, values);
@@ -98,14 +101,17 @@ static bool center_between_extremes(const struct axis_calibration *cal) {
 // The touchpad has no rest position, so its center is derived from the extremes.
 static void calibrate_axis(struct axis_calibration *cal, uint8_t channel, const char *low_prompt, const char *high_prompt, bool center_from_extremes) {
     while (1) {
+        //measure both extremes
         cal->low = read_channel_on_press(low_prompt, channel);
         cal->high = read_channel_on_press(high_prompt, channel);
         if (center_from_extremes) {
             cal->center = ((uint16_t) cal->low + cal->high) / 2;
         }
+        //values are valid, done
         if (center_between_extremes(cal)) {
             return;
         }
+        //invalid, show error and try again
         oled_clear();
         fprintf_P(oled_output(),
                   PSTR("CALIBRATION ERROR\n\nCH%u L%u C%u H%u\nCENTER MUST LIE\n"
@@ -145,6 +151,7 @@ void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     save_calibration(cal);
     printf_P(PSTR("calibration: saved to EEPROM\n"));
 
+    //show result on OLED
     FILE *out = oled_output();
     oled_clear();
     fprintf_P(out, PSTR("CALIBRATION DONE\n\n"));
@@ -185,7 +192,9 @@ void calibration_ask(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     }
 }
 
+//convert raw ADC value to 0-255 using calibration, center maps to 128
 uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw) {
+    //distances from center
     int16_t offset = (int16_t) raw - cal->center;
     int16_t low_span = (int16_t) cal->low - cal->center;
     int16_t high_span = (int16_t) cal->high - cal->center;
@@ -201,6 +210,7 @@ uint8_t calibration_apply(const struct axis_calibration *cal, uint8_t raw) {
                + (int32_t) (CALIBRATION_MAX - CALIBRATION_ORIGO) * offset / high_span;
     }
 
+    //clamp to 0-255
     if (scaled < 0) {
         return 0;
     }

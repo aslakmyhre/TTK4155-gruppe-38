@@ -10,6 +10,7 @@
 #define FONT_FIRST_CHAR ' '
 #define FONT_LAST_CHAR  '~'
 
+//line the cursor is on
 static uint8_t current_line;
 
 //send single command byte to OLED
@@ -32,12 +33,14 @@ static void oled_data(uint8_t d)
     spi_deselect_all();
 }
 
+//move cursor to line, keep column
 void oled_goto_line(uint8_t line)
 {
     current_line = line % OLED_LINES;
     oled_cmd(0xB0 | current_line);    /* page 0-7 */
 }
 
+//move cursor to column, keep line
 void oled_goto_column(uint8_t column)
 {
     oled_cmd(0x00 | (column & 0x0F)); /* column low nibble  */
@@ -74,6 +77,7 @@ void oled_clear(void)
     oled_home();
 }
 
+//set contrast (brightness)
 void oled_contrast(uint8_t level)
 {
     oled_cmd(0x81);
@@ -82,6 +86,7 @@ void oled_contrast(uint8_t level)
 
 void oled_init(void)
 {
+    //D/C pin as output, low
     PORTB &= ~(1 << SPI_DISPLAY_DC);
     DDRB  |= (1 << SPI_DISPLAY_DC);
     /* DISP_RES is not driven: PB3 is the CAN controller's CS */
@@ -98,22 +103,27 @@ void oled_init(void)
     oled_cmd(0xAF);   /* display on                             */
 }
 
+//draw one character at cursor
 void oled_putchar(char c)
 {
+    //characters not in font are shown as '?'
     if (c < FONT_FIRST_CHAR || c > FONT_LAST_CHAR)
         c = '?';
+    //send the 5 columns of the character, read from flash
     const uint8_t *glyph = font5[c - FONT_FIRST_CHAR];
     for (uint8_t i = 0; i < FONT_WIDTH; i++)
         oled_data(pgm_read_byte(&glyph[i]));
     oled_data(0x00);                  /* 1 blank column between characters */
 }
 
+//draw string at cursor
 void oled_print(const char *s)
 {
     while (*s)
         oled_putchar(*s++);
 }
 
+//putchar for stdio, newline moves to start of next line
 static int oled_stream_putchar(char c, FILE *stream)
 {
     (void)stream;
@@ -124,8 +134,10 @@ static int oled_stream_putchar(char c, FILE *stream)
     return 0;
 }
 
+//stream that makes fprintf write to OLED
 static FILE oled_stream = FDEV_SETUP_STREAM(oled_stream_putchar, NULL, _FDEV_SETUP_WRITE);
 
+//returns stream for printing to OLED
 FILE *oled_output(void)
 {
     return &oled_stream;
@@ -156,6 +168,7 @@ void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
         oled_data(image_h_byte(img, width, p, col) & mask);
 }
 
+//draw columns from RAM at column x on one page
 void oled_draw_columns(uint8_t x, uint8_t page, const uint8_t *columns, uint8_t width)
 {
     oled_pos(page, x);

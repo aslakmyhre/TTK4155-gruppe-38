@@ -3,6 +3,7 @@
 
 #include <avr/io.h>
 
+//putchar for stdio, sends one char over UART
 static int uart_putchar(char c, FILE *stream) {
     (void)stream;
     if (c == '\n') {
@@ -13,6 +14,7 @@ static int uart_putchar(char c, FILE *stream) {
     return 0;
 }
 
+//getchar for stdio, waits for one char from UART
 static int uart_getchar(FILE *stream) {
     (void)stream;
     return uart_receive();
@@ -35,12 +37,16 @@ void uart_init(uint16_t ubrr) {
     stdin = stdout = stderr = &uart_stream;
 }
 
+//send one byte
 void uart_transmit(unsigned char data) {
+    //wait until transmit buffer is empty
     while (!(UCSR0A & (1 << UDRE0))) {}
     UDR0 = data;
 }
 
+//receive one byte
 unsigned char uart_receive(void) {
+    //wait until a byte has arrived
     while (!(UCSR0A & (1 << RXC0))) {}
     return UDR0;
 }
