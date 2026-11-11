@@ -12,10 +12,10 @@
 
 static uint8_t current_line;
 
-
+//send single command byte to OLED
 static void oled_cmd(uint8_t c)
 {
-    PORTB &= ~(1 << SPI_DISPLAY_DC);   /* command mode */
+    PORTB &= ~(1 << SPI_DISPLAY_DC);   // command mode
     spi_select(SPI_SLAVE_DISPLAY);
     (void)spi_transfer(c);
     spi_deselect_all();
@@ -47,11 +47,13 @@ void oled_pos(uint8_t line, uint8_t column)
     oled_goto_column(column);
 }
 
+//set "home" position to the top left corner of the display
 void oled_home(void)
 {
     oled_pos(0, 0);
 }
 
+//clear one line, set "home" position on that line
 void oled_clear_line(uint8_t line)
 {
     oled_pos(line, 0);
@@ -60,6 +62,7 @@ void oled_clear_line(uint8_t line)
     oled_pos(line, 0);
 }
 
+//clear the entire display, set "home" position
 void oled_clear(void)
 {
     for (uint8_t line = 0; line < OLED_LINES; line++)

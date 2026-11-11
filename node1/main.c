@@ -316,7 +316,7 @@ int main(void) {
         printf_P(PSTR("can: init failed\n"));
     }
     mcp2515_print_registers();
-    sei();
+    sei(); //enable interrupts 
     oled_init();
     _delay_ms(IO_BOARD_STARTUP_MS);
 

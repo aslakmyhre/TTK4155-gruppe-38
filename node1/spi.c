@@ -21,9 +21,11 @@ void spi_deselect_all(void)
     PORTB |= cs_mask();
 }
 
+//select one slave
 void spi_select(enum spi_slave slave)
 {
     spi_deselect_all();
+    //Pull CS low for selected slave
     PORTB &= (uint8_t)~_BV(cs_pins[slave]);
 }
 
