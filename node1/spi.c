@@ -38,17 +38,18 @@ void spi_init(void)
 {
     spi_deselect_all();
 
-    //set PB4 as input to keep MSTR bit
+    //set SS as input to keep MSTR bit
     PORTB |= _BV(PB4);
     DDRB |= _BV(PB4);
 
+    //set CS pins, SCK, MISO as output
     PORTB &= (uint8_t)~(_BV(PB5) | _BV(PB6) | _BV(PB7));
     DDRB |= cs_mask() | _BV(PB5) | _BV(PB7);
 
-    //MOSI=input
+    //MOSI as input
     DDRB &= (uint8_t)~_BV(PB6);
 
-    // Mode 0, MSB first, F_CPU/128 = 38.4 kHz at 4.9152 MHz.
+    //Mode 0, MSB first, F_CPU/128 = 38.4 kHz at 4.9152 MHz.
     SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPR1) | _BV(SPR0);
     SPSR = 0;
 }

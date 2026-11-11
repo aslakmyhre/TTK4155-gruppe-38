@@ -308,13 +308,9 @@ static void play_splash(void)
 
 int main(void) {
     uart_init(UBRR_VALUE(9600));
-
-    // PORTA/PORTC become the multiplexed address/data bus after this,
-    // so no LED blinking on PA0 any more.
     xmem_init();
     adc_init();
     sram_test();
-
     spi_init();
     if (!can_init()) {
         printf_P(PSTR("can: init failed\n"));
