@@ -21,9 +21,12 @@ static void oled_cmd(uint8_t c)
     spi_deselect_all();
 }
 
+//send data byte to OLED
 static void oled_data(uint8_t d)
 {
-    PORTB |=  (1 << SPI_DISPLAY_DC);   /* data mode */
+    //D/C high for data mode
+    PORTB |=  (1 << SPI_DISPLAY_DC);
+    
     spi_select(SPI_SLAVE_DISPLAY);
     (void)spi_transfer(d);
     spi_deselect_all();
@@ -41,6 +44,7 @@ void oled_goto_column(uint8_t column)
     oled_cmd(0x10 | (column >> 4));   /* column high nibble */
 }
 
+//set current line and column to desired values
 void oled_pos(uint8_t line, uint8_t column)
 {
     oled_goto_line(line);
@@ -143,7 +147,7 @@ static uint8_t image_h_byte(const uint8_t *img, uint8_t width,
     }
     return out;
 }
-
+//draw single row of image at column x
 void oled_draw_image_h_page(uint8_t x, uint8_t page, uint8_t width,
                             const uint8_t *img, uint8_t p, uint8_t mask)
 {

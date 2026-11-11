@@ -292,8 +292,8 @@ static void game(void)
     }
 }
 
-/* Reveals the image one pixel row at a time, from the bottom up. Only the
-   page holding the new row changes, so only that page is redrawn. */
+
+//draws picture one row at a time, bottom up
 static void play_splash(void)
 {
     oled_clear();
