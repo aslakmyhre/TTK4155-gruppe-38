@@ -28,7 +28,7 @@ static bool load_calibration(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     eeprom_read_block(cal, eeprom_calibration.axes, sizeof eeprom_calibration.axes);
     return true;
 }
-
+//save calibration to EEPROM
 static void save_calibration(const struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     // Mark the record invalid until all values have been written.
     eeprom_update_byte(&eeprom_calibration.marker, 0);
@@ -74,8 +74,8 @@ static bool wait_for_left_or_right(void) {
     }
 }
 
-// Prompts are flash strings (PSTR) to keep them out of the 1 KiB internal RAM.
-// They must fit one 21-character OLED line.
+
+//show prompt, wait for button press, read all ADC channels
 static void read_on_press(const char *prompt, uint8_t values[ADC_NUM_CHANNELS]) {
     oled_clear();
     fprintf_P(oled_output(), PSTR("CALIBRATION\n\n%S\n\nTHEN PRESS A BUTTON"), prompt);
@@ -115,6 +115,7 @@ static void calibrate_axis(struct axis_calibration *cal, uint8_t channel, const 
     }
 }
 
+//calibrates joystick by measuring rest position, then min/max for each axis
 static void calibrate_joystick(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     uint8_t rest[ADC_NUM_CHANNELS];
     read_on_press(PSTR("RELEASE THE JOYSTICK"), rest);
@@ -127,6 +128,7 @@ static void calibrate_joystick(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
                    PSTR("PUSH JOYSTICK LEFT"), PSTR("PUSH JOYSTICK RIGHT"), false);
 }
 
+//calibrates touchpad by measuring min/max for each axis, center is derived from extremes
 static void calibrate_touchpad(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     calibrate_axis(&cal[TOUCHPAD_Y_CHANNEL], TOUCHPAD_Y_CHANNEL,
                    PSTR("HOLD TOUCHPAD BOTTOM"), PSTR("HOLD TOUCHPAD TOP"),
@@ -136,6 +138,7 @@ static void calibrate_touchpad(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
                    true);
 }
 
+//calibration script
 void calibration_run(struct axis_calibration cal[ADC_NUM_CHANNELS]) {
     calibrate_joystick(cal);
     calibrate_touchpad(cal);
