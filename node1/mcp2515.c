@@ -51,12 +51,17 @@ ISR(INT0_vect)
     interrupt_flag = true;
 }
 
+//Enable interrupt from MCP2515
 static void int0_init(void)
-{
-    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN); //PD2=input
-    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01)); //trigger on falling edge
-    GIFR = _BV(INTF0); //clear old trigger
-    GICR |= _BV(INT0); //enable INT0
+{   
+    //PD2=input
+    DDRD &= (uint8_t)~_BV(MCP2515_INT_PIN);
+    //trigger on falling edge
+    MCUCR = (uint8_t)((MCUCR & ~_BV(ISC00)) | _BV(ISC01));
+    //clear old trigger
+    GIFR = _BV(INTF0);
+    //enable INT0 
+    GICR |= _BV(INT0);
 }
 
 static void begin(uint8_t instruction)
@@ -65,6 +70,7 @@ static void begin(uint8_t instruction)
     (void)spi_transfer(instruction);
 }
 
+//Reset MCP2515, set to configuration mode
 void mcp2515_reset(void)
 {
     begin(INSTRUCTION_RESET);
@@ -129,10 +135,13 @@ void mcp2515_bit_modify(uint8_t address, uint8_t mask, uint8_t data)
     spi_deselect_all();
 }
 
+//Configures MCP2515 recieve settings
 static void receive_init(void)
 {
-    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT); //0x64 - accept all + rollover
-    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY); //0x60 accept all
+    //accept all messages, rollover from RXB0 to RXB1, enable interrupts on both buffers
+    mcp2515_write(RXB0CTRL, RXBCTRL_RXM_ANY | RXBCTRL_BUKT);
+    mcp2515_write(RXB1CTRL, RXBCTRL_RXM_ANY);
+    //Pull INT low when message arrives
     mcp2515_write(MCP2515_CANINTE, MCP2515_INT_RX0 | MCP2515_INT_RX1);
 }
 
@@ -140,9 +149,13 @@ bool mcp2515_init(void)
 {
     mcp2515_reset();
     int0_init();
+
+
+    // Check if the MCP2515 is in configuration mode, else SPI communication fails
     if ((mcp2515_read(MCP2515_CANSTAT) & MCP2515_MODE_MASK) != MCP2515_MODE_CONFIG) {
         return false;
     }
+    // Set up receive buffers and enable interrupt on received message
     receive_init();
     return true;
 }
