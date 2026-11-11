@@ -93,15 +93,13 @@ static void print_adc_values(void)
     for (uint8_t channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
         values[channel] = calibration_apply(&cal[channel], raw[channel]);
     }
-    // Kept in the format tools/plot_adc.py parses
     printf_P(PSTR("ADC: %3u %3u %3u %3u\n"),
              values[0], values[1], values[2], values[3]);
 
     struct joystick_position pos = joystick_position(
         values[JOYSTICK_X_CHANNEL], values[JOYSTICK_Y_CHANNEL]);
     joystick_print_position(pos);
-    // Raw values share this line: tools/plot_adc.py plots any line with
-    // exactly four integers, so a separate raw line would be plotted too.
+    // Raw values share this line:.
     printf_P(PSTR("  %-7S  raw: %3u %3u %3u %3u\n"),
              joystick_direction_name(joystick_direction(pos)),
              raw[0], raw[1], raw[2], raw[3]);
@@ -127,8 +125,7 @@ static void draw_io_board_inputs(void)
     fprintf_P(out, PSTR("BTN R %3u L %3u N %3u"), buttons.right, buttons.left, buttons.nav);
 }
 
-/* Live IO-board values on the OLED and calibrated ADC values on UART
-   (for tools/plot_adc.py) until the joystick is clicked. */
+/* Live IO-board values on the OLED and calibrated ADC values on UART until the joystick is clicked. */
 static void show_inputs(void)
 {
     bool was_pressed = true;
